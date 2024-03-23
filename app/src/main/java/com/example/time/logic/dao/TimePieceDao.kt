@@ -28,9 +28,8 @@ interface TimePieceDao {
     @Query("select * from TimePiece")
     fun loadAllTimePieces(): List<TimePiece>
 
-//    @Query("select * from TimePiece where age > :age")
-//    fun loadTimePiecesOlderThan(age: Int): List<TimePiece>
-//
+    @Query("SELECT COUNT(*) FROM TimePiece")
+    fun getCount(): Int
     @Query("delete from TimePiece where emotion = :emotion")
     fun deleteTimePieceByEmotion(emotion: Int): Int
 
