@@ -1,5 +1,6 @@
 package com.example.time.logic.dao
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -13,17 +14,15 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LifePieceDao {
 
-    @Query("SELECT * FROM LifePiece ORDER BY lifePiece")
-    fun getAlphabetizedLifePieces(): List<LifePiece>
+    @Query("SELECT * FROM LifePiece ORDER BY lifePiece ASC")
+    fun getAlphabetizedLifePieces(): LiveData<List<LifePiece>>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(lifePiece: LifePiece): Long
-    // suspend
 
     @Query("select * from LifePiece")
-    fun loadAllLifePieces(): List<LifePiece>
+    fun loadAllLifePieces(): LiveData<List<LifePiece>>
 
-//    @Query("DELETE FROM life_piece_table")
-//    suspend fun deleteAll() : Int
-
+    @Delete
+    fun deleteLifePiece(lifePiece: LifePiece)
 }

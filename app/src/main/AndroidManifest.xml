@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name=".LifePieceApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,6 +13,15 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:targetApi="34">
+        <activity
+            android:name=".ui.activity.ShowTimePiecesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activity.ShowTimeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activity.ShowFeelingActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
