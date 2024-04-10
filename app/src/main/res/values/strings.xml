@@ -3,4 +3,8 @@
     <string name="previous_event_prompt">回首向来萧瑟处</string>
     <string name="tiYan_prompt">也无风雨也无晴</string>
     <string name="score_prompt">feeling</string>
+    <string name="hint_word">Word...</string>
+    <string name="button_save">Save</string>
+    <string name="empty_not_saved">Word not saved because it is empty.</string>
+    <string name="add_word">Add word</string>
 </resources>
