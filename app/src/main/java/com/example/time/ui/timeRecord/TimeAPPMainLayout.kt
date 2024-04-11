@@ -14,15 +14,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -50,6 +55,7 @@ import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.activity.ShowTimePiecesActivity
+import com.example.time.ui.showLifePieces.LifePieceListEdit
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -177,7 +183,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             Button(
                 onClick = { showDialog = true },
             ) {
-                Text("Add Event")
+                Text("Event")
             }
 
             Button(
@@ -240,6 +246,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     }) {
                         Text("Confirm")
                     }
+                    lifePieces.value?.let { LifePieceListEdit(it, viewModel) }
                 }
             }
         }
@@ -253,6 +260,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
 //        }
     }
 }
+
 
 @Composable
 fun ButtonToShowTimeActivity() {

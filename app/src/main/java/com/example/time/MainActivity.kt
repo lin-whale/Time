@@ -68,26 +68,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 //        setContent{LifePieceScreen(viewModel = lifePieceViewModel)}
 
-//        setContent {
-//            WordScreen(viewModel = wordViewModel, onButtonClicked = {it -> wordViewModel.insert(Word(word = it))})
-//        }
-//        setContentView(R.layout.activity_main)
-//
-//        val recyclerView = findViewById<RecyclerView>(R.id.recyclerview)
-//        val adapter = WordListAdapter()
-//        recyclerView.adapter = adapter
-//        recyclerView.layoutManager = LinearLayoutManager(this)
-//
-//        wordViewModel.allWords.observe(this) { words ->
-//            // Update the cached copy of the words in the adapter.
-//            words.let { adapter.submitList(it) }
-//        }
-//        val fab = findViewById<FloatingActionButton>(R.id.fab)
-//        fab.setOnClickListener {
-//            val intent = Intent(this@MainActivity, NewWordActivity::class.java)
-//            startActivityForResult(intent, newWordActivityRequestCode)
-//        }
-
         setContent {
             TimeTheme {
                 Surface(

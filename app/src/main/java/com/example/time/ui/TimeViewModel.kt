@@ -28,6 +28,11 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
     fun insertLifePiece(lifePiece: LifePiece) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertLifePiece(lifePiece)
     }
+
+    fun deleteLifePiece(lifePiece: String) = viewModelScope.launch(Dispatchers.IO) {
+        repository.deleteLifePiece(lifePiece)
+    }
+
     fun insertTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertTimePiece(timePiece)
     }
