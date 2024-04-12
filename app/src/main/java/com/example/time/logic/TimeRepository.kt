@@ -34,6 +34,11 @@ class TimeRepository(private val timePieceDao: TimePieceDao, private val lifePie
     }
 
     @WorkerThread
+    fun deleteLifePiece(lifePiece: String) {
+        lifePieceDao.deleteByLifePiece(lifePiece)
+    }
+
+    @WorkerThread
     fun insertTimePiece(timePiece: TimePiece) {
         timePieceDao.insert(timePiece)
     }

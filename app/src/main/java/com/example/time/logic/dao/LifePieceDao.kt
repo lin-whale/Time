@@ -23,6 +23,9 @@ interface LifePieceDao {
     @Query("select * from LifePiece")
     fun loadAllLifePieces(): LiveData<List<LifePiece>>
 
+    @Query("DELETE FROM LifePiece WHERE lifePiece = :lifePiece")
+    fun deleteByLifePiece(lifePiece: String)
+
     @Delete
     fun deleteLifePiece(lifePiece: LifePiece)
 }
