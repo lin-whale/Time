@@ -135,10 +135,15 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
             ) {
                 timeSumsByMainEvent.forEach { (mainEvent, sum) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+//                        Box(
+//                            modifier = Modifier
+//                                .size(16.dp)
+//                                .background(colorMap[mainEvent] ?: Color.Black)
+//                        )
+                        ButtonToShowEventFeelingActivity(
                             modifier = Modifier
-                                .size(16.dp)
-                                .background(colorMap[mainEvent] ?: Color.Black)
+                                    .size(width = 15.dp, height = 15.dp)
+                                , mainEvent, colorMap[mainEvent] ?: Color.Black
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(

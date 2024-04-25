@@ -18,6 +18,9 @@ interface TimePieceDao {
     @Query("SELECT * FROM TimePiece WHERE timePoint BETWEEN :startTime AND :endTime ORDER BY timePoint ASC")
     fun getTimePiecesBetween(startTime: Long, endTime: Long): List<TimePiece>
 
+    @Query("SELECT * FROM TimePiece WHERE mainEvent = :mainEvent")
+    fun getTimePiecesByMainEvent(mainEvent: String): List<TimePiece>
+
     @Update
     fun updateTimePiece(newTimePiece: TimePiece)
 
