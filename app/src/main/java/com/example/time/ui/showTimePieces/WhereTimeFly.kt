@@ -36,7 +36,7 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
     val timeSumsByMainEvent = timePieces
         .groupBy { it.mainEvent }
         .mapValues { entry ->
-            entry.value.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
+            entry.value.sumOf { it.timePoint - it.fromTimePoint }
         }
         .toList()
         .sortedByDescending { it.second }

@@ -20,7 +20,7 @@ fun HowTimeGo(timePieces: List<TimePiece>) {
     val timeSumsByEmotion = timePieces
         .groupBy { it.emotion }
         .mapValues { entry ->
-            entry.value.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
+            entry.value.sumOf { it.timePoint - it.fromTimePoint }
         }
         .toList()
         .sortedBy { it.first }
