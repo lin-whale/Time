@@ -20,11 +20,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -54,6 +56,7 @@ import com.example.time.logic.model.LifePiece
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.TimeViewModel
+import com.example.time.ui.activity.ShowIntroductionActivity
 import com.example.time.ui.activity.ShowTimePiecesActivity
 import com.example.time.ui.showLifePieces.LifePieceListEdit
 
@@ -79,6 +82,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var newEvent by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var isTimePickerOpen by remember { mutableStateOf(false) }
+    var isMDOpen by remember { mutableStateOf(false) }
     var isTimePick by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -220,6 +224,17 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             }
         }
         Row {
+            Button(onClick = {
+                isMDOpen = true
+            }) {
+                Text(text = "?")
+            }
+            if(isMDOpen){
+                IntroductionDialog{
+                    isMDOpen = false
+                }
+            }
+//            ButtonToShowIntroduction()
             ButtonToShowTimePiecesActivity()
             ButtonToShowTimeActivity()
             ButtonToShowFeelingPiecesActivity()
@@ -306,6 +321,22 @@ fun ButtonToShowTimePiecesActivity() {
         activityResultLauncher.launch(intent)
     }) {
         Text("\uD83D\uDCCB")
+    }
+}
+
+@Composable
+fun ButtonToShowIntroduction() {
+    val context = LocalContext.current
+    val activityResultLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // 处理从新的 Activity 返回的结果
+        }
+
+    Button(onClick = {
+        val intent = Intent(context, ShowIntroductionActivity::class.java)
+        activityResultLauncher.launch(intent)
+    }) {
+        Text("使用手册")
     }
 }
 
