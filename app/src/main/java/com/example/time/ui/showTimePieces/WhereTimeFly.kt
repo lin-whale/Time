@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
+import com.example.time.ui.utils.ExpandableList
 import com.example.time.ui.utils.getRandomColor
 import kotlin.math.cos
 import kotlin.math.sin
@@ -122,6 +123,8 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
             radius = innerCircleRadius
         )
     }
+
+//    ExpandableList(timePieces, colorMap)
 
     // Step 3: 绘制图例
     LazyColumn(
