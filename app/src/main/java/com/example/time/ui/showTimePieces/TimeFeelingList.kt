@@ -32,10 +32,28 @@ import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.ui.activity.ShowEventFeelingActivity
 import com.example.time.ui.activity.ShowTimePiecesActivity
+import com.example.time.ui.utils.ExpandableList
+import com.example.time.ui.utils.getRandomColor
 
 @Composable
 fun TimeFeelingList(timePieceList: List<TimePiece>) {
     val (selectedEmotion, setSelectedEmotion) = remember { mutableStateOf(0) }
+
+    // Step 1: 计算每种mainEvent的时间长度总和
+    val timeSumsByMainEvent = timePieceList
+        .groupBy { it.mainEvent }
+        .mapValues { entry ->
+            entry.value.sumOf { it.timePoint - it.fromTimePoint }
+        }
+        .toList()
+        .sortedByDescending { it.second }
+        .toMap()
+
+    // Step 1: 创建颜色映射
+    val colorMap = mutableMapOf<String, Color>()
+    timeSumsByMainEvent.keys.forEach { mainEvent ->
+        colorMap[mainEvent] = getRandomColor()
+    }
 
     Column(
         modifier = Modifier
@@ -68,28 +86,29 @@ fun TimeFeelingList(timePieceList: List<TimePiece>) {
             }
             .toMap() // 转换回映射
 
-        LazyColumn {
-            items(groupedTimePieces.keys.toList()) { mainEvent ->
-                val timePieces = groupedTimePieces[mainEvent] ?: emptyList()
-                val totalTime = timePieces.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp, end = 20.dp)) {
-                    ButtonToShowEventFeelingActivity(modifier = Modifier.size(width = 15.dp, height = 15.dp), mainEvent, Color(0xFFDEB7FF))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = mainEvent,
-                        modifier = Modifier.weight(4f),
-                        textAlign = TextAlign.Start,
-                        style = TextStyle(fontSize = 16.sp)
-                    )
-                    Text(
-                        text = convertDurationFormat(totalTime.toLong()),
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.End,
-                        style = TextStyle(fontSize = 16.sp)
-                    )
-                }
-            }
-        }
+        ExpandableList(timePieces = filteredTimePieces, colorMap)
+//        LazyColumn {
+//            items(groupedTimePieces.keys.toList()) { mainEvent ->
+//                val timePieces = groupedTimePieces[mainEvent] ?: emptyList()
+//                val totalTime = timePieces.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
+//                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp, end = 20.dp)) {
+//                    ButtonToShowEventFeelingActivity(modifier = Modifier.size(width = 15.dp, height = 15.dp), mainEvent, Color(0xFFDEB7FF))
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Text(
+//                        text = mainEvent,
+//                        modifier = Modifier.weight(4f),
+//                        textAlign = TextAlign.Start,
+//                        style = TextStyle(fontSize = 16.sp)
+//                    )
+//                    Text(
+//                        text = convertDurationFormat(totalTime.toLong()),
+//                        modifier = Modifier.weight(1f),
+//                        textAlign = TextAlign.End,
+//                        style = TextStyle(fontSize = 16.sp)
+//                    )
+//                }
+//            }
+//        }
     }
 }
 
