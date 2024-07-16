@@ -20,7 +20,7 @@ fun HowTimeGo(timePieces: List<TimePiece>) {
     val timeSumsByEmotion = timePieces
         .groupBy { it.emotion }
         .mapValues { entry ->
-            entry.value.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
+            entry.value.sumOf { it.timePoint - it.fromTimePoint }
         }
         .toList()
         .sortedBy { it.first }
@@ -53,7 +53,7 @@ fun HowTimeGo(timePieces: List<TimePiece>) {
         val lineEndY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
         return Offset(lineEndX, lineEndY)
     }
-    Canvas(modifier = Modifier.size(400.dp)) {
+    Canvas(modifier = Modifier.size(height=300.dp, width = 400.dp)) {
         val diameter = size.minDimension
         val radius = diameter / 3f
         val center = Offset(size.width / 2, size.height / 2)

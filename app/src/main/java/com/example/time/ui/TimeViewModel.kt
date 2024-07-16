@@ -2,6 +2,7 @@ package com.example.time.ui
 
 import TimeRepository
 import androidx.annotation.WorkerThread
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -42,6 +43,13 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
     fun getTimePiecesBetween(startTime: Long, endTime: Long) {
         viewModelScope.launch {
             val timePiecesList = repository.getTimePiecesBetween(startTime, endTime)
+            _timePieces.value = timePiecesList
+        }
+    }
+
+    fun getTimePiecesByMainEvent(mainEvent: String){
+        viewModelScope.launch {
+            val timePiecesList = repository.getTimePiecesByMainEvent(mainEvent)
             _timePieces.value = timePiecesList
         }
     }

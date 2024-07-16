@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
+import com.example.time.ui.utils.ExpandableList
 import com.example.time.ui.utils.getRandomColor
 import kotlin.math.cos
 import kotlin.math.sin
@@ -36,7 +37,7 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
     val timeSumsByMainEvent = timePieces
         .groupBy { it.mainEvent }
         .mapValues { entry ->
-            entry.value.sumOf { (it.timePoint - it.fromTimePoint).toInt() }
+            entry.value.sumOf { it.timePoint - it.fromTimePoint }
         }
         .toList()
         .sortedByDescending { it.second }
@@ -69,7 +70,10 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
         val lineEndY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
         return Offset(lineEndX, lineEndY)
     }
-    Canvas(modifier = Modifier.size(400.dp)) {
+    Canvas(
+        modifier = Modifier
+            .size(width = 400.dp, height = 300.dp)
+    ) {
         val diameter = size.minDimension
         val radius = diameter / 3f
         val center = Offset(size.width / 2, size.height / 2)
@@ -123,41 +127,48 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
         )
     }
 
+    ExpandableList(timePieces, colorMap)
+
     // Step 3: 绘制图例
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                timeSumsByMainEvent.forEach { (mainEvent, sum) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(colorMap[mainEvent] ?: Color.Black)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = mainEvent,
-                            modifier = Modifier.weight(3f),
-                            textAlign = TextAlign.Start,
-                            style = TextStyle(fontSize = 16.sp)
-                        )
-                        Text(
-                            text = convertDurationFormat(sum.toLong()),
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.End,
-                            style = TextStyle(fontSize = 16.sp)
-                        )
-                    }
-                }
-            }
-        }
-    }
+//    LazyColumn(
+//        modifier = Modifier.fillMaxSize()
+//    ) {
+//        item {
+//            Column(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp)
+//            ) {
+//                timeSumsByMainEvent.forEach { (mainEvent, sum) ->
+//                    Row(verticalAlignment = Alignment.CenterVertically) {
+////                        Box(
+////                            modifier = Modifier
+////                                .size(16.dp)
+////                                .background(colorMap[mainEvent] ?: Color.Black)
+////                        )
+//                        ButtonToShowEventFeelingActivity(
+//                            modifier = Modifier
+//                                    .size(width = 15.dp, height = 15.dp)
+//                                , mainEvent, colorMap[mainEvent] ?: Color.Black
+//                        )
+//                        Spacer(modifier = Modifier.width(8.dp))
+//                        Text(
+//                            text = mainEvent,
+//                            modifier = Modifier.weight(3f),
+//                            textAlign = TextAlign.Start,
+//                            style = TextStyle(fontSize = 16.sp)
+//                        )
+//                        Text(
+//                            text = convertDurationFormat(sum.toLong()),
+//                            modifier = Modifier.weight(1f),
+//                            textAlign = TextAlign.End,
+//                            style = TextStyle(fontSize = 16.sp)
+//                        )
+//                    }
+//                }
+//            }
+//        }
+//    }
 
 }
 
