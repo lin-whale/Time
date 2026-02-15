@@ -60,10 +60,4 @@ class TimeRepository(private val timePieceDao: TimePieceDao, private val lifePie
     fun deleteTimePiece(timePiece: TimePiece) {
         timePieceDao.deleteTimePiece(timePiece)
     }
-    
-    // 新增：获取所有有序的TimePiece
-    @WorkerThread
-    fun getOrderedTimePieces(): List<TimePiece> {
-        return timePieceDao.getOrderedTimePiece()
-    }
 }

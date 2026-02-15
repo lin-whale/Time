@@ -138,32 +138,35 @@
 ### 任务4: 零除错误修复 ✅
 
 #### 修复位置
-1. **HowTimeGo.kt (Line 64)**
+1. **HowTimeGo.kt**
    ```kotlin
-   // 修复前
-   val sweepAngle = (sum.toFloat() / totalSum.toFloat()) * 360f
-   
-   // 修复后 - 添加小值避免除以0
-   val sweepAngle = (sum.toFloat() / (totalSum.toFloat() + 0.0001f)) * 360f
+   // 在绘制饼图前检查数据是否为空
+   if (timeSumsByEmotion.isEmpty() || timeSumsByEmotion.values.sum() == 0L) {
+       return  // 不显示饼图，避免除零错误
+   }
    ```
 
-2. **HowTimeGoByEvent.kt (Line 64)**
+2. **HowTimeGoByEvent.kt**
    ```kotlin
-   // 同样的修复
-   val sweepAngle = (sum.toFloat() / (totalSum.toFloat() + 0.0001f)) * 360f
+   // 同样的检查
+   if (timeSumsByEmotion.isEmpty() || timeSumsByEmotion.values.sum() == 0L) {
+       return
+   }
    ```
 
-3. **WhereTimeFly.kt (Line 84)**
+3. **WhereTimeFly.kt**
    ```kotlin
-   // 同样的修复
-   val sweepAngle = (sum.toFloat() / (totalSum.toFloat() + 0.0001f)) * 360f
+   // 同样的检查
+   if (timeSumsByMainEvent.isEmpty() || timeSumsByMainEvent.values.sum() == 0L) {
+       return
+   }
    ```
 
 #### 问题说明
 - 当用户首次使用app，没有任何记录时，totalSum为0
 - 在计算饼图扇形角度时会发生除以0错误
-- 添加0.0001f作为保护值，避免崩溃
-- 该值足够小，不会影响正常计算结果
+- 通过早期返回检查，当没有数据时不显示饼图，避免崩溃
+- 这是比添加小值更好的解决方案，因为它明确处理了空数据状态
 
 ## 代码质量保证
 

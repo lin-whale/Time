@@ -191,6 +191,8 @@ fun TimePieceInsertDialog(
                             }
                             
                             // 检查是否完全替换原记录（不是真正的插入）
+                            // 插入功能用于在时间段内添加新记录，如果完全覆盖原时间段，
+                            // 应该使用编辑功能而不是插入功能
                             if (insertStartTime == originalTimePiece.fromTimePoint && 
                                 insertEndTime == originalTimePiece.timePoint) {
                                 errorMessage = "插入时间不能完全覆盖原时间段，请使用编辑功能"
