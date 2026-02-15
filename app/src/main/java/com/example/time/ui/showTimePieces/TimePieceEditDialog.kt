@@ -60,6 +60,9 @@ fun TimePieceEditDialog(
     
     // 插入对话框状态
     var showInsertDialog by remember { mutableStateOf(false) }
+    
+    // 错误信息状态
+    var errorMessage by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -148,6 +151,16 @@ fun TimePieceEditDialog(
                         }
                     }
                 }
+                
+                // 错误信息显示
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
 
                 // 操作按钮
                 Row(
@@ -188,12 +201,12 @@ fun TimePieceEditDialog(
                         onClick = {
                             // 验证输入
                             if (editedMainEvent.isEmpty()) {
-                                // 可以添加错误提示，这里简单处理
+                                errorMessage = "主事件不能为空"
                                 return@Button
                             }
                             
                             if (editedFromTime >= editedToTime) {
-                                // 开始时间必须早于结束时间
+                                errorMessage = "开始时间必须早于结束时间"
                                 return@Button
                             }
                             
