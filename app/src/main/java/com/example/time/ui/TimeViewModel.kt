@@ -53,6 +53,21 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
             _timePieces.value = timePiecesList
         }
     }
+    
+    // 新增：更新TimePiece的方法
+    fun updateTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateTimePiece(timePiece)
+    }
+    
+    // 新增：删除TimePiece的方法
+    fun deleteTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
+        repository.deleteTimePiece(timePiece)
+    }
+    
+    // 新增：插入和删除的原子操作（用于时间段切割）
+    fun insertAndDeleteTimePieces(toInsert: List<TimePiece>, toDelete: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
+        repository.insertAndDeleteTimePieces(toInsert, toDelete)
+    }
 }
 
 class TimeViewModelFactory(private val repository: TimeRepository) : ViewModelProvider.Factory {

@@ -26,6 +26,11 @@ fun HowTimeGoByEvent(timePieces: List<TimePiece>) {
         .sortedBy { it.first }
         .toMap()
 
+    // 如果没有数据，不显示饼图，避免除零错误
+    if (timeSumsByEmotion.isEmpty() || timeSumsByEmotion.values.sum() == 0L) {
+        return
+    }
+
     // Step 1: 创建颜色映射
     val colorMap = mutableMapOf<Int, Color>()
     timeSumsByEmotion.keys.forEach { emotion ->

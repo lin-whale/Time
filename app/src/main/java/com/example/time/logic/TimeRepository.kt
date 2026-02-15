@@ -48,4 +48,22 @@ class TimeRepository(private val timePieceDao: TimePieceDao, private val lifePie
     fun insertTimePiece(timePiece: TimePiece) {
         timePieceDao.insert(timePiece)
     }
+    
+    // 新增：更新TimePiece的方法
+    @WorkerThread
+    fun updateTimePiece(timePiece: TimePiece) {
+        timePieceDao.updateTimePiece(timePiece)
+    }
+    
+    // 新增：删除TimePiece的方法
+    @WorkerThread
+    fun deleteTimePiece(timePiece: TimePiece) {
+        timePieceDao.deleteTimePiece(timePiece)
+    }
+    
+    // 新增：插入和删除的原子操作（用于时间段切割）
+    @WorkerThread
+    fun insertAndDeleteTimePieces(toInsert: List<TimePiece>, toDelete: TimePiece) {
+        timePieceDao.insertAndDelete(toInsert, toDelete)
+    }
 }

@@ -72,8 +72,8 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var emotionStar by remember {
         mutableStateOf(3)
     }
-    var mainEvent = ""
-    var subEvent = ""
+    var mainEvent by remember { mutableStateOf("") }
+    var subEvent by remember { mutableStateOf("") }
     val lifePieces = viewModel.allLifePieces.observeAsState()
     val previousTimePiece = viewModel.previousTimePiece.observeAsState()
     var curTime: Long by remember {
@@ -84,30 +84,46 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var isTimePickerOpen by remember { mutableStateOf(false) }
     var isMDOpen by remember { mutableStateOf(false) }
     var isTimePick by remember { mutableStateOf(false) }
+    // 新增：确认对话框状态
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var confirmTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var isConfirmTimePickerOpen by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .statusBarsPadding()
-            .padding(horizontal = 40.dp)
+            .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState())
-            .safeDrawingPadding(),
+            .safeDrawingPadding()
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = (previousTimePiece.value?.get(0)?.mainEvent
-                ?: ("开始记录生命体验吧~")) + (if (previousTimePiece.value?.get(0)?.subEvent?.isEmpty() == true) "" else ":${
-                previousTimePiece.value?.get(
-                    0
-                )?.subEvent
-            }") + "\n" + convertTimeFormat(
-                previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
-            ),
-            color = Color(0xFFFFC0CB),
+        // 顶部标题区域 - 优化布局和颜色
+        Surface(
             modifier = Modifier
-                .padding(bottom = 16.dp, top = 40.dp)
-                .align(alignment = Alignment.CenterHorizontally),
-            textAlign = TextAlign.Center
-        )
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            color = Color(0xFFF3E5F5),
+            shadowElevation = 4.dp,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        ) {
+            Text(
+                text = (previousTimePiece.value?.get(0)?.mainEvent
+                    ?: ("开始记录生命体验吧~")) + (if (previousTimePiece.value?.get(0)?.subEvent?.isEmpty() == true) "" else ":${
+                    previousTimePiece.value?.get(
+                        0
+                    )?.subEvent
+                }") + "\n" + convertTimeFormat(
+                    previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
+                ),
+                color = Color(0xFF6A1B9A),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(alignment = Alignment.CenterHorizontally),
+                textAlign = TextAlign.Center,
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+            )
+        }
         InputField(
             label = R.string.previous_event_prompt,
             keyboardOptions = KeyboardOptions.Default.copy(
@@ -116,16 +132,25 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             ),
             value = record,
             onValueChanged = { record = it },
-            modifier = Modifier
-                .padding(bottom = 10.dp)
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         )
-        FlowRow(
-            modifier = Modifier.fillMaxSize()
+        
+        // 生命片段选择区域 - 改进布局
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFFFF9E6),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         ) {
-            lifePieces.value?.let {
-                LifeList(it) { selectedLifePiece ->
-                    record = selectedLifePiece.lifePiece
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                lifePieces.value?.let {
+                    LifeList(it) { selectedLifePiece ->
+                        record = selectedLifePiece.lifePiece
+                    }
                 }
             }
         }
@@ -137,36 +162,57 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             ),
             value = tiYan,
             onValueChanged = { tiYan = it },
-            modifier = Modifier
-                .padding(bottom = 10.dp, top = 10.dp)
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         )
 
-        Row(
-            modifier = Modifier.align(Alignment.End)
+        // 情感评分区域 - 优化布局
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFFFF3E0),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         ) {
-            repeat(5) { index ->
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = if (index < emotionStar) Color.Yellow else Color.Gray,
-                    modifier = Modifier
-                        .clickable {
-                            // 更新用户评分
-                            emotionStar = index + 1
-                        }
-                        .padding(4.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "情感评分：",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF5D4037)
                 )
+                Row {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = if (index < emotionStar) Color(0xFFFFD600) else Color(0xFFE0E0E0),
+                            modifier = Modifier
+                                .clickable {
+                                    // 更新用户评分
+                                    emotionStar = index + 1
+                                }
+                                .padding(4.dp)
+                        )
+                    }
+                }
             }
         }
+        // 操作按钮区域 - 优化布局和样式
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = {
-                isTimePickerOpen = true
-            }) {
-                Text(text = "时光回溯~")
+            Button(
+                onClick = {
+                    isTimePickerOpen = true
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE1BEE7))
+            ) {
+                Text(text = "⏰ 时光回溯", color = Color(0xFF4A148C))
             }
 
             if (isTimePickerOpen) {
@@ -186,58 +232,62 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
 
             Button(
                 onClick = { showDialog = true },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB2DFDB))
             ) {
-                Text("Event")
+                Text("📝 事件", color = Color(0xFF004D40))
             }
 
             Button(
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBFE9FF)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF80CBC4)),
                 onClick = {
-                    if (!isTimePick) {
-                        curTime = System.currentTimeMillis()
-                    }
-                    val emotion: Int = emotionStar
+                    // 工作流优化：点击提交后，先显示确认对话框而不是直接提交
                     val hierarchyRecord = record.split("[：:]".toRegex())
                     mainEvent = hierarchyRecord[0]
                     if (hierarchyRecord.size > 1) {
                         subEvent = hierarchyRecord[1]
+                    } else {
+                        subEvent = ""  // 重置subEvent，避免数据泄露
                     }
-                    val fromTimePoint: Long =
-                        previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
-                    val timePiece = TimePiece(
-                        timePoint = curTime, fromTimePoint = fromTimePoint,
-                        emotion = emotion, lastTimeRecord = tiYan,
-                        mainEvent = mainEvent, subEvent = subEvent
-                    )
+                    
+                    // 只在有主事件时显示确认对话框
                     if (mainEvent != "") {
-                        viewModel.insertTimePiece(timePiece)
+                        // 只有在有效事件时才设置时间
+                        if (!isTimePick) {
+                            curTime = System.currentTimeMillis()
+                        }
+                        confirmTime = curTime
+                        showConfirmDialog = true
                     }
-                    showDialog = false
-                    // 清空输入窗口
-                    record = ""
-                    tiYan = ""
-                    emotionStar = 3
-                    isTimePick = false
-                }
+                },
+                modifier = Modifier.weight(1f)
             ) {
-                Text("✔️")
+                Text("✅ 提交", color = Color.White)
             }
         }
-        Row {
-            Button(onClick = {
-                isMDOpen = true
-            }) {
-                Text(text = "?")
+        // 导航按钮区域 - 改进样式
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = {
+                    isMDOpen = true
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE3F2FD))
+            ) {
+                Text(text = "❓ 帮助", color = Color(0xFF0D47A1))
             }
             if(isMDOpen){
                 IntroductionDialog{
                     isMDOpen = false
                 }
             }
-//            ButtonToShowIntroduction()
-            ButtonToShowTimePiecesActivity()
-            ButtonToShowTimeActivity()
-            ButtonToShowFeelingPiecesActivity()
+            
+            ButtonToShowTimePiecesActivity(modifier = Modifier.weight(1f))
+            ButtonToShowTimeActivity(modifier = Modifier.weight(1f))
+            ButtonToShowFeelingPiecesActivity(modifier = Modifier.weight(1f))
         }
         if (showDialog) {
             Dialog(onDismissRequest = { showDialog = false }) {
@@ -266,6 +316,118 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             }
         }
 
+        // 新增：提交确认对话框，允许用户修改结束时间
+        if (showConfirmDialog) {
+            Dialog(onDismissRequest = { showConfirmDialog = false }) {
+                Surface(
+                    modifier = Modifier.padding(16.dp),
+                    color = Color.White,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "确认记录",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Text(
+                            text = "事件：$mainEvent" + (if (subEvent.isEmpty()) "" else "：$subEvent"),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        Text(
+                            text = "体验：$tiYan",
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        Row(
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("情感：")
+                            repeat(5) { index ->
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = if (index < emotionStar) Color(0xFFFFD600) else Color.Gray,
+                                    modifier = Modifier.padding(2.dp)
+                                )
+                            }
+                        }
+                        
+                        Text(
+                            text = "结束时间：${convertTimeFormat(confirmTime)}",
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Button(onClick = {
+                                isConfirmTimePickerOpen = true
+                            }) {
+                                Text(text = "修改时间")
+                            }
+                            
+                            Button(onClick = {
+                                showConfirmDialog = false
+                            }) {
+                                Text("取消")
+                            }
+                            
+                            Button(
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBFE9FF)),
+                                onClick = {
+                                    // 确认提交：创建TimePiece并保存
+                                    val emotion: Int = emotionStar
+                                    val fromTimePoint: Long =
+                                        previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
+                                    val timePiece = TimePiece(
+                                        timePoint = confirmTime, 
+                                        fromTimePoint = fromTimePoint,
+                                        emotion = emotion, 
+                                        lastTimeRecord = tiYan,
+                                        mainEvent = mainEvent, 
+                                        subEvent = subEvent
+                                    )
+                                    viewModel.insertTimePiece(timePiece)
+                                    
+                                    // 清空输入窗口
+                                    record = ""
+                                    tiYan = ""
+                                    emotionStar = 3
+                                    isTimePick = false
+                                    showConfirmDialog = false
+                                }
+                            ) {
+                                Text("确认")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 确认对话框中的时间选择器
+            if (isConfirmTimePickerOpen) {
+                TimePickerDialog(
+                    latestTime = previousTimePiece.value?.get(0)?.timePoint
+                        ?: System.currentTimeMillis(),
+                    onTimeSelected = {
+                        confirmTime = it
+                        isConfirmTimePickerOpen = false
+                    },
+                    onCancel = {
+                        isConfirmTimePickerOpen = false
+                    }
+                )
+            }
+        }
+
 //        Button(onClick = {
 //            for (timePiece in viewModel.allTimePieces.value!!) {
 //                Log.d("MainActivity", timePiece.toString())
@@ -278,49 +440,61 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
 
 
 @Composable
-fun ButtonToShowTimeActivity() {
+fun ButtonToShowTimeActivity(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             // 处理从新的 Activity 返回的结果
         }
-        Button(onClick = {
-            val intent = Intent(context, ShowTimeActivity::class.java)
-            activityResultLauncher.launch(intent)
-        }) {
-            Text("\uD83D\uDD52")
+        Button(
+            onClick = {
+                val intent = Intent(context, ShowTimeActivity::class.java)
+                activityResultLauncher.launch(intent)
+            },
+            modifier = modifier,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFE0B2))
+        ) {
+            Text("🕒 统计", color = Color(0xFFE65100))
         }
 }
 
 @Composable
-fun ButtonToShowFeelingPiecesActivity() {
+fun ButtonToShowFeelingPiecesActivity(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             // 处理从新的 Activity 返回的结果
         }
 
-    Button(onClick = {
-        val intent = Intent(context, ShowFeelingActivity::class.java)
-        activityResultLauncher.launch(intent)
-    }) {
-        Text("\uD83D\uDC96")
+    Button(
+        onClick = {
+            val intent = Intent(context, ShowFeelingActivity::class.java)
+            activityResultLauncher.launch(intent)
+        },
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF8BBD0))
+    ) {
+        Text("💖 感受", color = Color(0xFF880E4F))
     }
 }
 
 @Composable
-fun ButtonToShowTimePiecesActivity() {
+fun ButtonToShowTimePiecesActivity(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             // 处理从新的 Activity 返回的结果
         }
 
-    Button(onClick = {
-        val intent = Intent(context, ShowTimePiecesActivity::class.java)
-        activityResultLauncher.launch(intent)
-    }) {
-        Text("\uD83D\uDCCB")
+    Button(
+        onClick = {
+            val intent = Intent(context, ShowTimePiecesActivity::class.java)
+            activityResultLauncher.launch(intent)
+        },
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC5E1A5))
+    ) {
+        Text("📋 记录", color = Color(0xFF33691E))
     }
 }
 

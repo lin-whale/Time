@@ -43,6 +43,11 @@ fun WhereTimeFly(timePieces: List<TimePiece>) {
         .sortedByDescending { it.second }
         .toMap()
 
+    // 如果没有数据，不显示饼图，避免除零错误
+    if (timeSumsByMainEvent.isEmpty() || timeSumsByMainEvent.values.sum() == 0L) {
+        return
+    }
+
     // Step 1: 创建颜色映射
     val colorMap = mutableMapOf<String, Color>()
     timeSumsByMainEvent.keys.forEach { mainEvent ->
