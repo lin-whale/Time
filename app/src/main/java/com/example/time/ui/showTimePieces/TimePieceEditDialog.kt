@@ -57,6 +57,9 @@ fun TimePieceEditDialog(
     // 时间选择器状态
     var showFromTimePicker by remember { mutableStateOf(false) }
     var showToTimePicker by remember { mutableStateOf(false) }
+    
+    // 插入对话框状态
+    var showInsertDialog by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -153,6 +156,16 @@ fun TimePieceEditDialog(
                 ) {
                     Button(
                         onClick = {
+                            // 打开插入对话框
+                            showInsertDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF80CBC4))
+                    ) {
+                        Text("插入记录", color = Color.White)
+                    }
+                    
+                    Button(
+                        onClick = {
                             // 删除记录
                             viewModel.deleteTimePiece(timePiece)
                             onDismiss()
@@ -161,7 +174,12 @@ fun TimePieceEditDialog(
                     ) {
                         Text("删除", color = Color.White)
                     }
-
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Button(onClick = onDismiss) {
                         Text("取消")
                     }
@@ -213,6 +231,18 @@ fun TimePieceEditDialog(
             },
             onCancel = {
                 showToTimePicker = false
+            }
+        )
+    }
+    
+    // 显示插入对话框
+    if (showInsertDialog) {
+        TimePieceInsertDialog(
+            originalTimePiece = timePiece,
+            viewModel = viewModel,
+            onDismiss = { 
+                showInsertDialog = false
+                onDismiss() // 插入完成后也关闭编辑对话框
             }
         )
     }
