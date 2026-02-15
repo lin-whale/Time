@@ -1,5 +1,6 @@
 package com.example.time.ui.showTimePieces
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,14 +13,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.ui.TimeViewModel
 
 
 @Composable
@@ -51,11 +58,18 @@ fun TimePieceList(timePieces: List<TimePiece>) {
 }
 
 @Composable
-fun TimePieceCard(timePiece: TimePiece, modifier: Modifier = Modifier) {
+fun TimePieceCard(timePiece: TimePiece, modifier: Modifier = Modifier, viewModel: TimeViewModel = viewModel()) {
+    // 编辑对话框状态
+    var showEditDialog by remember { mutableStateOf(false) }
+    
     Card(
         modifier = modifier
             .padding(horizontal = 2.dp)
             .fillMaxWidth()
+            .clickable { 
+                // 点击卡片打开编辑对话框
+                showEditDialog = true 
+            }
     ) {
         Column(
             modifier = Modifier.padding(2.dp)
@@ -95,5 +109,14 @@ fun TimePieceCard(timePiece: TimePiece, modifier: Modifier = Modifier) {
                 Text(timePiece.lastTimeRecord)
             }
         }
+    }
+    
+    // 显示编辑对话框
+    if (showEditDialog) {
+        TimePieceEditDialog(
+            timePiece = timePiece,
+            viewModel = viewModel,
+            onDismiss = { showEditDialog = false }
+        )
     }
 }

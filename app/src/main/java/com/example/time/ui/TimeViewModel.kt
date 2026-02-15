@@ -53,6 +53,21 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
             _timePieces.value = timePiecesList
         }
     }
+    
+    // 新增：更新TimePiece的方法
+    fun updateTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateTimePiece(timePiece)
+    }
+    
+    // 新增：删除TimePiece的方法
+    fun deleteTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
+        repository.deleteTimePiece(timePiece)
+    }
+    
+    // 新增：获取所有有序的TimePiece用于编辑时的时间验证
+    fun getOrderedTimePieces() = viewModelScope.launch(Dispatchers.IO) {
+        repository.getOrderedTimePieces()
+    }
 }
 
 class TimeViewModelFactory(private val repository: TimeRepository) : ViewModelProvider.Factory {
