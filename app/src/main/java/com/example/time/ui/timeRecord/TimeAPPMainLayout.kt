@@ -72,8 +72,8 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var emotionStar by remember {
         mutableStateOf(3)
     }
-    var mainEvent = ""
-    var subEvent = ""
+    var mainEvent by remember { mutableStateOf("") }
+    var subEvent by remember { mutableStateOf("") }
     val lifePieces = viewModel.allLifePieces.observeAsState()
     val previousTimePiece = viewModel.previousTimePiece.observeAsState()
     var curTime: Long by remember {
@@ -246,6 +246,8 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     mainEvent = hierarchyRecord[0]
                     if (hierarchyRecord.size > 1) {
                         subEvent = hierarchyRecord[1]
+                    } else {
+                        subEvent = ""  // 重置subEvent，避免数据泄露
                     }
                     
                     // 只在有主事件时显示确认对话框
@@ -351,7 +353,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
                                     contentDescription = null,
-                                    tint = if (index < emotionStar) Color.Yellow else Color.Gray,
+                                    tint = if (index < emotionStar) Color(0xFFFFD600) else Color.Gray,
                                     modifier = Modifier.padding(2.dp)
                                 )
                             }

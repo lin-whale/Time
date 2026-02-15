@@ -6,6 +6,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.example.time.logic.model.TimePiece
 
@@ -40,5 +41,18 @@ interface TimePieceDao {
     fun getCount(): Int
     @Query("delete from TimePiece where emotion = :emotion")
     fun deleteTimePieceByEmotion(emotion: Int): Int
+    
+    // 新增：批量插入TimePiece的事务方法
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertAll(vararg timePieces: TimePiece)
+    
+    // 新增：在事务中插入和删除的方法
+    @Transaction
+    fun insertAndDelete(toInsert: List<TimePiece>, toDelete: TimePiece) {
+        // 先删除原记录，避免重叠
+        deleteTimePiece(toDelete)
+        // 然后插入新记录
+        toInsert.forEach { insert(it) }
+    }
 
 }

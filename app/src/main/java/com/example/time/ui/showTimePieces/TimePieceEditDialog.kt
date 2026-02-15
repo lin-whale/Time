@@ -138,7 +138,7 @@ fun TimePieceEditDialog(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = null,
-                                tint = if (index < editedEmotion) Color.Yellow else Color.Gray,
+                                tint = if (index < editedEmotion) Color(0xFFFFD600) else Color.Gray,
                                 modifier = Modifier
                                     .clickable {
                                         editedEmotion = index + 1
@@ -186,6 +186,17 @@ fun TimePieceEditDialog(
 
                     Button(
                         onClick = {
+                            // 验证输入
+                            if (editedMainEvent.isEmpty()) {
+                                // 可以添加错误提示，这里简单处理
+                                return@Button
+                            }
+                            
+                            if (editedFromTime >= editedToTime) {
+                                // 开始时间必须早于结束时间
+                                return@Button
+                            }
+                            
                             // 保存更新
                             val updatedTimePiece = timePiece.copy(
                                 mainEvent = editedMainEvent,

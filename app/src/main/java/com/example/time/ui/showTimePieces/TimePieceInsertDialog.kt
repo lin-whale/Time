@@ -147,7 +147,7 @@ fun TimePieceInsertDialog(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = null,
-                                tint = if (index < newEmotion) Color.Yellow else Color.Gray,
+                                tint = if (index < newEmotion) Color(0xFFFFD600) else Color.Gray,
                                 modifier = Modifier
                                     .clickable {
                                         newEmotion = index + 1
@@ -263,13 +263,13 @@ fun TimePieceInsertDialog(
  * 原记录: [fromTimePoint -------- timePoint]
  * 
  * 情况1：插入在开始
- * [fromTimePoint -- insertEnd] [新记录] [insertEnd -------- timePoint] (保留原记录后半段)
+ * [新记录] [insertEnd -------- timePoint] (保留原记录后半段，从 insertEnd 到原 timePoint)
  * 
  * 情况2：插入在结束
- * [fromTimePoint -------- insertStart] [新记录] [insertStart -- timePoint]
+ * [fromTimePoint -------- insertStart] [新记录]
  * 
  * 情况3：插入在中间
- * [fromTimePoint -- insertStart] [新记录] [insertStart--insertEnd] [剩余时间段] [insertEnd -- timePoint]
+ * [fromTimePoint -- insertStart] [新记录] [insertEnd -- timePoint]
  */
 private fun performInsertAndSplit(
     original: TimePiece,
@@ -281,18 +281,10 @@ private fun performInsertAndSplit(
     newEmotion: Int,
     viewModel: TimeViewModel
 ) {
-    // 1. 创建新插入的TimePiece
-    val newTimePiece = TimePiece(
-        timePoint = insertEnd,
-        fromTimePoint = insertStart,
-        emotion = newEmotion,
-        lastTimeRecord = newLastTimeRecord,
-        mainEvent = newMainEvent,
-        subEvent = newSubEvent
-    )
-    viewModel.insertTimePiece(newTimePiece)
+    // 创建需要插入的所有记录列表
+    val toInsert = mutableListOf<TimePiece>()
     
-    // 2. 如果插入点不在开始位置，需要创建前半段记录
+    // 1. 如果插入点不在开始位置，需要创建前半段记录
     if (insertStart > original.fromTimePoint) {
         val beforePiece = TimePiece(
             timePoint = insertStart,
@@ -302,8 +294,19 @@ private fun performInsertAndSplit(
             mainEvent = original.mainEvent,
             subEvent = original.subEvent
         )
-        viewModel.insertTimePiece(beforePiece)
+        toInsert.add(beforePiece)
     }
+    
+    // 2. 创建新插入的TimePiece
+    val newTimePiece = TimePiece(
+        timePoint = insertEnd,
+        fromTimePoint = insertStart,
+        emotion = newEmotion,
+        lastTimeRecord = newLastTimeRecord,
+        mainEvent = newMainEvent,
+        subEvent = newSubEvent
+    )
+    toInsert.add(newTimePiece)
     
     // 3. 如果插入点不在结束位置，需要创建后半段记录
     if (insertEnd < original.timePoint) {
@@ -315,9 +318,10 @@ private fun performInsertAndSplit(
             mainEvent = original.mainEvent,
             subEvent = original.subEvent
         )
-        viewModel.insertTimePiece(afterPiece)
+        toInsert.add(afterPiece)
     }
     
-    // 4. 删除原始记录
-    viewModel.deleteTimePiece(original)
+    // 4. 使用事务方法：先删除原记录，再插入所有新记录
+    // 这样可以避免时间段重叠和数据不一致的问题
+    viewModel.insertAndDeleteTimePieces(toInsert, original)
 }
