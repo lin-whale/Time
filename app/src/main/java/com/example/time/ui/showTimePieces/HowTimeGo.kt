@@ -26,6 +26,11 @@ fun HowTimeGo(timePieces: List<TimePiece>) {
         .sortedBy { it.first }
         .toMap()
 
+    // 如果没有数据，不显示饼图，避免除零错误
+    if (timeSumsByEmotion.isEmpty() || timeSumsByEmotion.values.sum() == 0L) {
+        return
+    }
+
     // Step 1: 创建颜色映射
     val colorMap = mutableMapOf<Int, Color>()
     timeSumsByEmotion.keys.forEach { emotion ->
@@ -60,9 +65,8 @@ fun HowTimeGo(timePieces: List<TimePiece>) {
         val totalSum = timeSumsByEmotion.values.sum()
         var startAngle = -90f
 
-        // 防止零除错误：当没有记录时totalSum为0，添加一个小值避免除以0
         timeSumsByEmotion.forEach { (mainEvent, sum) ->
-            val sweepAngle = (sum.toFloat() / (totalSum.toFloat() + 0.0001f)) * 360f
+            val sweepAngle = (sum.toFloat() / totalSum.toFloat()) * 360f
             val labelAngle = startAngle + sweepAngle / 2
             val labelOffset = calculateLabelPosition(center, labelAngle, radius + 60f) // 计算文本标签的位置
             val lineStart = calculateLineStart(center, labelAngle, radius) // 计算折线的起始点位置

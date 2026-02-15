@@ -190,6 +190,13 @@ fun TimePieceInsertDialog(
                                 return@Button
                             }
                             
+                            // 检查是否完全替换原记录（不是真正的插入）
+                            if (insertStartTime == originalTimePiece.fromTimePoint && 
+                                insertEndTime == originalTimePiece.timePoint) {
+                                errorMessage = "插入时间不能完全覆盖原时间段，请使用编辑功能"
+                                return@Button
+                            }
+                            
                             if (newMainEvent.isEmpty()) {
                                 errorMessage = "主事件不能为空"
                                 return@Button

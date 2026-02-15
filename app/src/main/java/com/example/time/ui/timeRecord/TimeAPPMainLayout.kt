@@ -242,11 +242,6 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF80CBC4)),
                 onClick = {
                     // 工作流优化：点击提交后，先显示确认对话框而不是直接提交
-                    if (!isTimePick) {
-                        curTime = System.currentTimeMillis()
-                    }
-                    confirmTime = curTime
-                    
                     val hierarchyRecord = record.split("[：:]".toRegex())
                     mainEvent = hierarchyRecord[0]
                     if (hierarchyRecord.size > 1) {
@@ -255,6 +250,11 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     
                     // 只在有主事件时显示确认对话框
                     if (mainEvent != "") {
+                        // 只有在有效事件时才设置时间
+                        if (!isTimePick) {
+                            curTime = System.currentTimeMillis()
+                        }
+                        confirmTime = curTime
                         showConfirmDialog = true
                     }
                 },
