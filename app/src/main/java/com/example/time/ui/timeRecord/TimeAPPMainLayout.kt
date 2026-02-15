@@ -84,6 +84,10 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var isTimePickerOpen by remember { mutableStateOf(false) }
     var isMDOpen by remember { mutableStateOf(false) }
     var isTimePick by remember { mutableStateOf(false) }
+    // 新增：确认对话框状态
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var confirmTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var isConfirmTimePickerOpen by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .statusBarsPadding()
@@ -193,31 +197,22 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
             Button(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBFE9FF)),
                 onClick = {
+                    // 工作流优化：点击提交后，先显示确认对话框而不是直接提交
                     if (!isTimePick) {
                         curTime = System.currentTimeMillis()
                     }
-                    val emotion: Int = emotionStar
+                    confirmTime = curTime
+                    
                     val hierarchyRecord = record.split("[：:]".toRegex())
                     mainEvent = hierarchyRecord[0]
                     if (hierarchyRecord.size > 1) {
                         subEvent = hierarchyRecord[1]
                     }
-                    val fromTimePoint: Long =
-                        previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
-                    val timePiece = TimePiece(
-                        timePoint = curTime, fromTimePoint = fromTimePoint,
-                        emotion = emotion, lastTimeRecord = tiYan,
-                        mainEvent = mainEvent, subEvent = subEvent
-                    )
+                    
+                    // 只在有主事件时显示确认对话框
                     if (mainEvent != "") {
-                        viewModel.insertTimePiece(timePiece)
+                        showConfirmDialog = true
                     }
-                    showDialog = false
-                    // 清空输入窗口
-                    record = ""
-                    tiYan = ""
-                    emotionStar = 3
-                    isTimePick = false
                 }
             ) {
                 Text("✔️")
@@ -263,6 +258,118 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     }
                     lifePieces.value?.let { LifePieceListEdit(it, viewModel) }
                 }
+            }
+        }
+
+        // 新增：提交确认对话框，允许用户修改结束时间
+        if (showConfirmDialog) {
+            Dialog(onDismissRequest = { showConfirmDialog = false }) {
+                Surface(
+                    modifier = Modifier.padding(16.dp),
+                    color = Color.White,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "确认记录",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Text(
+                            text = "事件：$mainEvent" + (if (subEvent.isEmpty()) "" else "：$subEvent"),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        Text(
+                            text = "体验：$tiYan",
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        Row(
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("情感：")
+                            repeat(5) { index ->
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = if (index < emotionStar) Color.Yellow else Color.Gray,
+                                    modifier = Modifier.padding(2.dp)
+                                )
+                            }
+                        }
+                        
+                        Text(
+                            text = "结束时间：${convertTimeFormat(confirmTime)}",
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Button(onClick = {
+                                isConfirmTimePickerOpen = true
+                            }) {
+                                Text(text = "修改时间")
+                            }
+                            
+                            Button(onClick = {
+                                showConfirmDialog = false
+                            }) {
+                                Text("取消")
+                            }
+                            
+                            Button(
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBFE9FF)),
+                                onClick = {
+                                    // 确认提交：创建TimePiece并保存
+                                    val emotion: Int = emotionStar
+                                    val fromTimePoint: Long =
+                                        previousTimePiece.value?.get(0)?.timePoint ?: System.currentTimeMillis()
+                                    val timePiece = TimePiece(
+                                        timePoint = confirmTime, 
+                                        fromTimePoint = fromTimePoint,
+                                        emotion = emotion, 
+                                        lastTimeRecord = tiYan,
+                                        mainEvent = mainEvent, 
+                                        subEvent = subEvent
+                                    )
+                                    viewModel.insertTimePiece(timePiece)
+                                    
+                                    // 清空输入窗口
+                                    record = ""
+                                    tiYan = ""
+                                    emotionStar = 3
+                                    isTimePick = false
+                                    showConfirmDialog = false
+                                }
+                            ) {
+                                Text("确认")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 确认对话框中的时间选择器
+            if (isConfirmTimePickerOpen) {
+                TimePickerDialog(
+                    latestTime = previousTimePiece.value?.get(0)?.timePoint
+                        ?: System.currentTimeMillis(),
+                    onTimeSelected = {
+                        confirmTime = it
+                        isConfirmTimePickerOpen = false
+                    },
+                    onCancel = {
+                        isConfirmTimePickerOpen = false
+                    }
+                )
             }
         }
 
