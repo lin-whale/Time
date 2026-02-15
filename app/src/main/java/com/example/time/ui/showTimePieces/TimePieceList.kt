@@ -64,15 +64,22 @@ fun TimePieceCard(timePiece: TimePiece, modifier: Modifier = Modifier, viewModel
     
     Card(
         modifier = modifier
-            .padding(horizontal = 2.dp)
+            .padding(horizontal = 4.dp, vertical = 2.dp)
             .fillMaxWidth()
             .clickable { 
                 // 点击卡片打开编辑对话框
                 showEditDialog = true 
-            }
+            },
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = Color(0xFFFAFAFA)
+        ),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(2.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
 
             Row {
@@ -80,33 +87,42 @@ fun TimePieceCard(timePiece: TimePiece, modifier: Modifier = Modifier, viewModel
                     text = convertTimeFormat(
                         timePiece.timePoint,
                         "M/d  HH:mm"
-//                        (if (convertTimeFormat(timePiece.fromTimePoint, "M/d") == convertTimeFormat(
-//                                timePiece.timePoint,
-//                                "M/d"
-//                            )
-//                        ) "HH:mm" else "M/d  HH:mm")
                     ),
-                    Modifier.weight(1f), textAlign = TextAlign.Start
+                    Modifier.weight(1f), 
+                    textAlign = TextAlign.Start,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF616161)
                 )
                 Text(
                     text = convertDurationFormat(
                         timePiece.timePoint - timePiece.fromTimePoint,
                         "%d时%d分"
                     ),
-                    Modifier.weight(1f), textAlign = TextAlign.Center
+                    Modifier.weight(1f), 
+                    textAlign = TextAlign.Center,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF1976D2)
                 )
                 Text(
                     "\u2605".repeat(timePiece.emotion),
                     Modifier.weight(1f),
                     textAlign = TextAlign.End,
-                    color = Color.Yellow,
+                    color = Color(0xFFFFD600),
                 )
             }
             Text(
-                timePiece.mainEvent + (if (timePiece.subEvent.isEmpty()) "" else "：${timePiece.subEvent}")
+                timePiece.mainEvent + (if (timePiece.subEvent.isEmpty()) "" else "：${timePiece.subEvent}"),
+                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                color = Color(0xFF212121),
+                modifier = Modifier.padding(top = 4.dp)
             )
             if (timePiece.lastTimeRecord.isNotEmpty()) {
-                Text(timePiece.lastTimeRecord)
+                Text(
+                    timePiece.lastTimeRecord,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF757575),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
     }
