@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -55,7 +58,6 @@ jobs:
           ## 🚀 自动构建版本
           
           **构建时间:** ${{ steps.date.outputs.date }}
-          **提交:** ${{ github.sha }}
           
           ### 📦 下载
           - `app-debug.apk` - 调试版（可直接安装）
@@ -63,7 +65,3 @@ jobs:
         files: |
           app/build/outputs/apk/debug/app-debug.apk
           app/build/outputs/apk/release/app-release-unsigned.apk
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
