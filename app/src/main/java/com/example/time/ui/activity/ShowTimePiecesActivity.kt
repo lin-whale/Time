@@ -60,6 +60,6 @@ fun showTimePieces(viewModel: TimeViewModel){
     Column {
         DatePeriodPicker(viewModel = viewModel)
         // 传入 viewModel 以支持编辑功能（点击记录可编辑时间、事件名称）
-        TimePieceList(timePieces = timePieces, viewModel = viewModel)
+        TimePieceList(timePieces = timePieces)
     }
 }
