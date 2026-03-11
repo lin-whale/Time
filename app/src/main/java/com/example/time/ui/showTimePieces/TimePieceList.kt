@@ -90,8 +90,8 @@ fun TimePieceList(
         val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null
         val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null
         
-        val minTime = prevPiece?.fromTimePoint ?: 0L
-        val maxTime = nextPiece?.timePoint ?: System.currentTimeMillis()
+        val minTime = prevPiece?.timePoint ?: 0L  // 前一条的结束时间
+        val maxTime = nextPiece?.fromTimePoint ?: System.currentTimeMillis()  // 后一条的开始时间
         
         TimePieceEditDialog(
             timePiece = piece,
