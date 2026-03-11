@@ -29,64 +29,16 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
     
-    # 生成临时签名密钥并签名 Release APK
-    - name: Build and Sign Release APK
-      run: |
-        # 生成临时 keystore（固定参数保证每次构建签名一致）
-        keytool -genkey -v -keystore release.keystore \
-          -alias timefly \
-          -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass timeflyapp123 \
-          -keypass timeflyapp123 \
-          -dname "CN=TimeFly, OU=App, O=TimeFly, L=Shanghai, ST=Shanghai, C=CN"
-        
-        # 构建 Release APK
-        ./gradlew assembleRelease
-        
-        # 使用 apksigner 签名（优先）或 jarsigner
-        if command -v apksigner &> /dev/null; then
-          apksigner sign --ks release.keystore \
-            --ks-key-alias timefly \
-            --ks-pass pass:timeflyapp123 \
-            --key-pass pass:timeflyapp123 \
-            --out app/build/outputs/apk/release/app-release-signed.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
-        else
-          # 备用：使用 jarsigner
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore release.keystore \
-            -storepass timeflyapp123 \
-            -keypass timeflyapp123 \
-            app/build/outputs/apk/release/app-release-unsigned.apk timefly
-          
-          # zipalign 优化
-          if command -v zipalign &> /dev/null; then
-            zipalign -v 4 \
-              app/build/outputs/apk/release/app-release-unsigned.apk \
-              app/build/outputs/apk/release/app-release-signed.apk
-          else
-            cp app/build/outputs/apk/release/app-release-unsigned.apk \
-               app/build/outputs/apk/release/app-release-signed.apk
-          fi
-        fi
-    
     # 重命名 APK 文件为 App 名称
     - name: Rename APK files
       run: |
-        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/Time-Fly-debug.apk
-        mv app/build/outputs/apk/release/app-release-signed.apk app/build/outputs/apk/release/Time-Fly.apk
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/Time-Fly.apk
     
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: Time-Fly-debug
-        path: app/build/outputs/apk/debug/Time-Fly-debug.apk
-    
-    - name: Upload Signed Release APK
-      uses: actions/upload-artifact@v4
-      with:
         name: Time-Fly
-        path: app/build/outputs/apk/release/Time-Fly.apk
+        path: app/build/outputs/apk/debug/Time-Fly.apk
     
     - name: Get current date
       id: date
@@ -104,11 +56,9 @@ jobs:
           **构建时间:** ${{ steps.date.outputs.date }}
           
           ### 📦 下载
-          - **`Time-Fly.apk`** - ✅ 推荐（已签名，可直接安装）
-          - `Time-Fly-debug.apk` - 调试版
+          - **`Time-Fly.apk`** - 可直接安装
           
           ### ⚠️ 安装提示
           如果提示"未知来源"，请在设置中允许安装。
         files: |
-          app/build/outputs/apk/release/Time-Fly.apk
-          app/build/outputs/apk/debug/Time-Fly-debug.apk
+          app/build/outputs/apk/debug/Time-Fly.apk
