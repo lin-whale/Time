@@ -14,7 +14,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.time"
+        applicationId = "com.example.timefly"
         minSdk = 24
         targetSdk = 34
         versionCode = 3
