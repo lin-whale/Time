@@ -20,49 +20,68 @@ import com.example.time.logic.utils.convertTimeFormat
  * 时间选择对话框
  * 
  * @param latestTime 最小可选时间（起始时间）
- * @param maxTime 最大可选时间（默认为当前时间）
+ * @param maxTime 最大可选时间
  * @param onTimeSelected 选择时间后的回调
  * @param onCancel 取消回调
  */
 @Composable
 fun TimePickerDialog(
     latestTime: Long, 
-    maxTime: Long = System.currentTimeMillis(),  // 新增：最大时间限制
+    maxTime: Long = System.currentTimeMillis(),
     onTimeSelected: (Long) -> Unit, 
     onCancel: () -> Unit
 ) {
-    val minTime: Long by remember { mutableStateOf(latestTime) }
-    val upperBound: Long by remember { mutableStateOf(maxTime) }
+    // 直接使用参数，不用 remember 缓存
+    val minTime = latestTime
+    val upperBound = maxTime
+    
+    // 计算时间范围
+    val timeRange = upperBound - minTime
     
     // 默认选择中间时间
-    var selectedTime: Long by remember { mutableStateOf((minTime + upperBound) / 2) }
-    var ratio by remember { mutableStateOf(500f) }  // 默认滑到中间
+    var selectedTime by remember(minTime, upperBound) { 
+        mutableStateOf((minTime + upperBound) / 2) 
+    }
+    var ratio by remember(minTime, upperBound) { 
+        mutableStateOf(500f) 
+    }
 
     AlertDialog(
-        onDismissRequest = { /* 点击外部区域关闭对话框 */ },
+        onDismissRequest = { },
         title = { Text(text = "选择时间") },
         text = {
             Column {
-                Slider(
-                    value = ratio,
-                    onValueChange = {
-                        ratio = it
-                        // 根据滑动比例计算时间，范围是 minTime 到 upperBound
-                        selectedTime = (it / 1000f * (upperBound - minTime) + minTime).toLong()
-                    },
-                    valueRange = 0f..1000f,
-                    steps = 1000,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                val timeString = convertTimeFormat(selectedTime).substring(5)
-                val minTimeString = convertTimeFormat(minTime).substring(5)
-                val maxTimeString = convertTimeFormat(upperBound).substring(5)
-                Text(text = "范围: $minTimeString ~ $maxTimeString", fontSize = 12.sp)
-                Text(text = "选择: $timeString", fontSize = 16.sp)
+                if (timeRange > 0) {
+                    Slider(
+                        value = ratio,
+                        onValueChange = {
+                            ratio = it
+                            selectedTime = (it / 1000f * timeRange + minTime).toLong()
+                        },
+                        valueRange = 0f..1000f,
+                        steps = 1000,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                } else {
+                    Text(
+                        text = "⚠️ 时间范围为零，无法调整",
+                        color = androidx.compose.ui.graphics.Color.Red
+                    )
+                }
+                
+                val minTimeStr = convertTimeFormat(minTime, "MM/dd HH:mm")
+                val maxTimeStr = convertTimeFormat(upperBound, "MM/dd HH:mm")
+                val selectedStr = convertTimeFormat(selectedTime, "MM/dd HH:mm")
+                
+                Text(text = "范围: $minTimeStr ~ $maxTimeStr", fontSize = 12.sp)
+                Text(text = "选择: $selectedStr", fontSize = 16.sp)
             }
         },
         confirmButton = {
-            Button(onClick = { onTimeSelected(selectedTime) }) {
+            Button(
+                onClick = { onTimeSelected(selectedTime) },
+                enabled = timeRange > 0
+            ) {
                 Text(text = "确认")
             }
         },
