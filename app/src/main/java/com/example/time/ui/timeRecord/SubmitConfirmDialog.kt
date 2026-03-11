@@ -80,7 +80,7 @@ fun SubmitConfirmDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // 分隔线
-                HorizontalDivider(
+                Divider(
                     color = MaterialTheme.colorScheme.outlineVariant,
                     thickness = 1.dp
                 )

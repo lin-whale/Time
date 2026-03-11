@@ -119,7 +119,7 @@ fun TimePieceEditDialog(
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // ===== 时间编辑区域 =====

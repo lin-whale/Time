@@ -55,7 +55,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -205,7 +205,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    maxItemsInEachRow = 5
                 ) {
                     lifePieces.value?.let {
                         LifeList(it) { selectedLifePiece ->
@@ -215,7 +215,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // 体验输入框
@@ -456,7 +456,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
+                        Divider()
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         Text(
