@@ -50,6 +50,7 @@ import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.theme.EmotionColors
 import com.example.time.ui.timeRecord.TimePieceEditDialog
+import com.example.time.ui.TimeViewModel
 
 /**
  * 时间片段列表（Column 布局，用于非滚动容器）
@@ -74,7 +75,7 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
 @Composable
 fun TimePieceList(
     timePieces: List<TimePiece>,
-    viewModel: com.example.time.ui.TimeViewModel? = null,
+    viewModel: TimeViewModel? = null,
     onEdit: ((TimePiece) -> Unit)? = null,
     onDelete: ((TimePiece) -> Unit)? = null
 ) {
