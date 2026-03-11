@@ -479,8 +479,10 @@ fun InsertTimePieceDialog(
     }
     
     if (isSelectingTime) {
+        // 切割点必须在当前记录的时间范围内
         TimePickerDialog(
-            latestTime = originalPiece.fromTimePoint,
+            latestTime = originalPiece.fromTimePoint,  // 最小时间：记录开始时间
+            maxTime = originalPiece.timePoint,          // 最大时间：记录结束时间
             onTimeSelected = { newTime ->
                 // 确保切割点在原时间段范围内
                 if (newTime > originalPiece.fromTimePoint && newTime < originalPiece.timePoint) {
