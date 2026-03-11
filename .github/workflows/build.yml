@@ -26,19 +26,25 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
     
-    # 重命名 APK 文件为 App 名称
-    - name: Rename APK files
+    - name: Sign APK
       run: |
-        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/Time-Fly.apk
+        # 使用仓库中的 keystore 签名
+        $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+          --ks app/timefly.keystore \
+          --ks-key-alias timefly \
+          --ks-pass pass:TimeFly2026Key \
+          --key-pass pass:TimeFly2026Key \
+          --out app/build/outputs/apk/release/Time-Fly.apk \
+          app/build/outputs/apk/release/app-release-unsigned.apk
     
-    - name: Upload Debug APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Time-Fly
-        path: app/build/outputs/apk/debug/Time-Fly.apk
+        path: app/build/outputs/apk/release/Time-Fly.apk
     
     - name: Get current date
       id: date
@@ -56,9 +62,9 @@ jobs:
           **构建时间:** ${{ steps.date.outputs.date }}
           
           ### 📦 下载
-          - **`Time-Fly.apk`** - 可直接安装
+          - **`Time-Fly.apk`** - 已签名，可直接安装和更新
           
           ### ⚠️ 安装提示
           如果提示"未知来源"，请在设置中允许安装。
         files: |
-          app/build/outputs/apk/debug/Time-Fly.apk
+          app/build/outputs/apk/release/Time-Fly.apk
