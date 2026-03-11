@@ -116,6 +116,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var isTimePickerOpen by remember { mutableStateOf(false) }
     var isMDOpen by remember { mutableStateOf(false) }
     var isTimePick by remember { mutableStateOf(false) }
+    var showDataManage by remember { mutableStateOf(false) } // 数据管理对话框
     
     // 新增：提交确认对话框状态
     var showSubmitConfirm by remember { mutableStateOf(false) }
@@ -378,7 +379,22 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 
                 // 心情统计
                 ButtonToShowFeelingPiecesActivity()
+                
+                // 数据管理
+                IconTextButton(
+                    icon = "💾",
+                    text = "备份",
+                    onClick = { showDataManage = true }
+                )
             }
+        }
+        
+        // ===== 数据管理对话框 =====
+        if (showDataManage) {
+            DataManageDialog(
+                viewModel = viewModel,
+                onDismiss = { showDataManage = false }
+            )
         }
         
         Spacer(modifier = Modifier.height(20.dp))
