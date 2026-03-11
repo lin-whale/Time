@@ -185,11 +185,7 @@ fun TimePieceList(
                             viewModel?.updateTimePiece(resolution.adjustedPiece)
                         }
                         is ConflictResolution.AdjustNeighbor -> {
-                            viewModel?.updateTimePiece(updated)
-                            viewModel?.updateTimePiece(resolution.adjustedNeighbor)
-                        }
-                        is ConflictResolution.AdjustBoth -> {
-                            viewModel?.updateTimePiece(resolution.adjustedCurrent)
+                            viewModel?.updateTimePiece(resolution.currentPiece)
                             viewModel?.updateTimePiece(resolution.adjustedNeighbor)
                         }
                     }
@@ -271,8 +267,7 @@ private fun checkTimeConflict(
  */
 sealed class ConflictResolution {
     data class AdjustCurrent(val adjustedPiece: TimePiece) : ConflictResolution()
-    data class AdjustNeighbor(val adjustedNeighbor: TimePiece) : ConflictResolution()
-    data class AdjustBoth(val adjustedCurrent: TimePiece, val adjustedNeighbor: TimePiece) : ConflictResolution()
+    data class AdjustNeighbor(val adjustedNeighbor: TimePiece, val currentPiece: TimePiece) : ConflictResolution()
 }
 
 /**
@@ -383,7 +378,7 @@ fun TimeConflictDialog(
                                 val adjusted = conflict.previousPiece.copy(
                                     timePoint = conflict.currentPiece.fromTimePoint
                                 )
-                                onResolve(ConflictResolution.AdjustNeighbor(adjusted))
+                                onResolve(ConflictResolution.AdjustNeighbor(adjusted, conflict.currentPiece))
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -410,7 +405,7 @@ fun TimeConflictDialog(
                                 val adjusted = conflict.nextPiece.copy(
                                     fromTimePoint = conflict.currentPiece.timePoint
                                 )
-                                onResolve(ConflictResolution.AdjustNeighbor(adjusted))
+                                onResolve(ConflictResolution.AdjustNeighbor(adjusted, conflict.currentPiece))
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -437,7 +432,7 @@ fun TimeConflictDialog(
                                 val adjusted = conflict.previousPiece.copy(
                                     timePoint = conflict.currentPiece.fromTimePoint
                                 )
-                                onResolve(ConflictResolution.AdjustNeighbor(adjusted))
+                                onResolve(ConflictResolution.AdjustNeighbor(adjusted, conflict.currentPiece))
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -464,7 +459,7 @@ fun TimeConflictDialog(
                                 val adjusted = conflict.nextPiece.copy(
                                     fromTimePoint = conflict.currentPiece.timePoint
                                 )
-                                onResolve(ConflictResolution.AdjustNeighbor(adjusted))
+                                onResolve(ConflictResolution.AdjustNeighbor(adjusted, conflict.currentPiece))
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
