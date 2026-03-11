@@ -318,6 +318,7 @@ fun TimePieceEditDialog(
     if (isEditingFromTime) {
         TimePickerDialog(
             latestTime = minTime,
+            maxTime = editedToTime,  // 开始时间不能晚于结束时间
             onTimeSelected = { newTime ->
                 // 确保开始时间不晚于结束时间
                 if (newTime < editedToTime) {
@@ -333,6 +334,7 @@ fun TimePieceEditDialog(
     if (isEditingToTime) {
         TimePickerDialog(
             latestTime = editedFromTime,
+            maxTime = maxTime,  // 结束时间不能晚于下一条记录的开始时间
             onTimeSelected = { newTime ->
                 // 确保结束时间不早于开始时间，且不晚于最大时间
                 if (newTime > editedFromTime && newTime <= maxTime) {
