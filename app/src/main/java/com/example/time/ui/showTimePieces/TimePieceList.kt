@@ -1,6 +1,6 @@
 /**
  * TimePieceList - 时间片段列表组件
- * 支持点击编辑功能
+ * 支持点击编辑功能，自动保持时间连续性
  */
 package com.example.time.ui.showTimePieces
 
@@ -18,15 +18,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,21 +50,16 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
     }
 }
 
+/**
+ * 时间片段列表
+ * 编辑保存时自动调整相邻记录，保持时间连续不重叠
+ */
 @Composable
 fun TimePieceList(
     timePieces: List<TimePiece>,
     viewModel: TimeViewModel? = null
 ) {
     var editingPiece by remember { mutableStateOf<TimePiece?>(null) }
-    
-    // 时间冲突状态：存储冲突信息
-    var showConflictDialog by remember { mutableStateOf(false) }
-    var conflictMessage by remember { mutableStateOf("") }
-    var conflictType by remember { mutableStateOf("") } // "gap" or "overlap"
-    var pendingPiece by remember { mutableStateOf<TimePiece?>(null) }
-    var neighborPiece by remember { mutableStateOf<TimePiece?>(null) }
-    var adjustedNeighbor by remember { mutableStateOf<TimePiece?>(null) }
-    var adjustedCurrent by remember { mutableStateOf<TimePiece?>(null) }
     
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(timePieces) { timePiece ->
@@ -87,78 +78,49 @@ fun TimePieceList(
         val piece = editingPiece!!
         val pieceIndex = timePieces.indexOf(piece)
         
-        val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null
-        val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null
+        // 列表是倒序的：index小=时间晚，index大=时间早
+        val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null  // 时间上更晚的记录
+        val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null  // 时间上更早的记录
         
-        val minTime = prevPiece?.timePoint ?: 0L  // 前一条的结束时间
-        val maxTime = nextPiece?.fromTimePoint ?: System.currentTimeMillis()  // 后一条的开始时间
+        // 时间范围：允许在相邻记录范围内自由调整
+        val minTime = prevPiece?.fromTimePoint ?: (piece.fromTimePoint - 24 * 60 * 60 * 1000L)
+        val maxTime = nextPiece?.timePoint ?: System.currentTimeMillis()
         
         TimePieceEditDialog(
             timePiece = piece,
             onSave = { updated ->
-                // 检查与前一条记录的冲突
-                if (prevPiece != null) {
-                    when {
-                        updated.fromTimePoint < prevPiece.timePoint -> {
-                            // 重叠
-                            conflictType = "overlap_prev"
-                            conflictMessage = "与前一条记录时间重叠\n重叠时段：${convertTimeFormat(updated.fromTimePoint, "HH:mm")} ~ ${convertTimeFormat(prevPiece.timePoint, "HH:mm")}"
-                            pendingPiece = updated
-                            neighborPiece = prevPiece
-                            adjustedCurrent = updated.copy(fromTimePoint = prevPiece.timePoint)
-                            adjustedNeighbor = prevPiece.copy(timePoint = updated.fromTimePoint)
-                            showConflictDialog = true
-                            return@TimePieceEditDialog
-                        }
-                        updated.fromTimePoint > prevPiece.timePoint -> {
-                            // 间隙
-                            conflictType = "gap_prev"
-                            val duration = convertDurationFormat(updated.fromTimePoint - prevPiece.timePoint, "%d时%d分")
-                            conflictMessage = "与前一条记录之间有时间间隙\n间隙时长：$duration"
-                            pendingPiece = updated
-                            neighborPiece = prevPiece
-                            adjustedCurrent = updated.copy(fromTimePoint = prevPiece.timePoint)
-                            adjustedNeighbor = prevPiece.copy(timePoint = updated.fromTimePoint)
-                            showConflictDialog = true
-                            return@TimePieceEditDialog
-                        }
-                    }
+                // 自动调整相邻记录以保持时间连续
+                
+                // 1. 如果开始时间变了，调整前一条记录的结束时间
+                if (prevPiece != null && updated.fromTimePoint != prevPiece.timePoint) {
+                    val adjustedPrev = prevPiece.copy(timePoint = updated.fromTimePoint)
+                    viewModel.updateTimePiece(adjustedPrev)
                 }
                 
-                // 检查与后一条记录的冲突
-                if (nextPiece != null) {
-                    when {
-                        updated.timePoint > nextPiece.fromTimePoint -> {
-                            // 重叠
-                            conflictType = "overlap_next"
-                            conflictMessage = "与后一条记录时间重叠\n重叠时段：${convertTimeFormat(nextPiece.fromTimePoint, "HH:mm")} ~ ${convertTimeFormat(updated.timePoint, "HH:mm")}"
-                            pendingPiece = updated
-                            neighborPiece = nextPiece
-                            adjustedCurrent = updated.copy(timePoint = nextPiece.fromTimePoint)
-                            adjustedNeighbor = nextPiece.copy(fromTimePoint = updated.timePoint)
-                            showConflictDialog = true
-                            return@TimePieceEditDialog
-                        }
-                        updated.timePoint < nextPiece.fromTimePoint -> {
-                            // 间隙
-                            conflictType = "gap_next"
-                            val duration = convertDurationFormat(nextPiece.fromTimePoint - updated.timePoint, "%d时%d分")
-                            conflictMessage = "与后一条记录之间有时间间隙\n间隙时长：$duration"
-                            pendingPiece = updated
-                            neighborPiece = nextPiece
-                            adjustedCurrent = updated.copy(timePoint = nextPiece.fromTimePoint)
-                            adjustedNeighbor = nextPiece.copy(fromTimePoint = updated.timePoint)
-                            showConflictDialog = true
-                            return@TimePieceEditDialog
-                        }
-                    }
+                // 2. 如果结束时间变了，调整后一条记录的开始时间
+                if (nextPiece != null && updated.timePoint != nextPiece.fromTimePoint) {
+                    val adjustedNext = nextPiece.copy(fromTimePoint = updated.timePoint)
+                    viewModel.updateTimePiece(adjustedNext)
                 }
                 
-                // 无冲突，直接保存
+                // 3. 保存当前记录
                 viewModel.updateTimePiece(updated)
                 editingPiece = null
             },
             onDelete = { deleted ->
+                // 删除时，将前一条记录延长到后一条记录的开始时间
+                if (prevPiece != null && nextPiece != null) {
+                    val adjustedPrev = prevPiece.copy(timePoint = nextPiece.fromTimePoint)
+                    viewModel.updateTimePiece(adjustedPrev)
+                } else if (prevPiece != null) {
+                    // 删除的是最新一条，前一条延长到当前记录的结束时间
+                    val adjustedPrev = prevPiece.copy(timePoint = deleted.timePoint)
+                    viewModel.updateTimePiece(adjustedPrev)
+                } else if (nextPiece != null) {
+                    // 删除的是最早一条，后一条的开始时间提前
+                    val adjustedNext = nextPiece.copy(fromTimePoint = deleted.fromTimePoint)
+                    viewModel.updateTimePiece(adjustedNext)
+                }
                 viewModel.deleteTimePiece(deleted)
                 editingPiece = null
             },
@@ -177,61 +139,6 @@ fun TimePieceList(
             onCancel = { editingPiece = null },
             minTime = minTime,
             maxTime = maxTime
-        )
-    }
-    
-    // 时间冲突对话框
-    if (showConflictDialog) {
-        AlertDialog(
-            onDismissRequest = { 
-                showConflictDialog = false 
-            },
-            title = {
-                Text(
-                    text = if (conflictType.contains("overlap")) "⚠️ 时间重叠" else "⚠️ 时间间隙",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column {
-                    Text(conflictMessage)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("请选择处理方式：", fontWeight = FontWeight.Medium)
-                }
-            },
-            confirmButton = {
-                Column {
-                    // 选项1：调整当前记录
-                    Button(
-                        onClick = {
-                            adjustedCurrent?.let { viewModel?.updateTimePiece(it) }
-                            showConflictDialog = false
-                            editingPiece = null
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (conflictType.contains("overlap")) "缩短当前记录" else "延长当前记录")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // 选项2：调整相邻记录
-                    OutlinedButton(
-                        onClick = {
-                            pendingPiece?.let { viewModel?.updateTimePiece(it) }
-                            adjustedNeighbor?.let { viewModel?.updateTimePiece(it) }
-                            showConflictDialog = false
-                            editingPiece = null
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (conflictType.contains("prev")) "调整前一条记录" else "调整后一条记录")
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConflictDialog = false }) {
-                    Text("返回编辑")
-                }
-            }
         )
     }
 }
