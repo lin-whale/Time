@@ -67,22 +67,37 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
  * 时间片段列表（LazyColumn 布局，用于滚动显示）
  * 
  * @param timePieces 时间片段列表
- * @param onEdit 编辑回调（可选）
+ * @param viewModel ViewModel（传入后支持点击编辑功能）
+ * @param onEdit 编辑回调（可选，viewModel 为空时可用）
  * @param onDelete 删除回调（可选）
  */
 @Composable
 fun TimePieceList(
     timePieces: List<TimePiece>,
+    viewModel: com.example.time.ui.TimeViewModel? = null,
     onEdit: ((TimePiece) -> Unit)? = null,
     onDelete: ((TimePiece) -> Unit)? = null
 ) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(timePieces) { timePiece ->
-            TimePieceCard(
-                timePiece = timePiece,
-                modifier = Modifier.padding(horizontal = 8.dp),
-                onClick = if (onEdit != null) { { onEdit(timePiece) } } else null
-            )
+    // 如果传入了 viewModel，使用可编辑版本
+    if (viewModel != null) {
+        TimePieceListEditable(
+            timePieces = timePieces,
+            onUpdate = { piece -> viewModel.updateTimePiece(piece) },
+            onDelete = { piece -> viewModel.deleteTimePiece(piece) },
+            onInsertBefore = { splitTime, originalPiece ->
+                viewModel.insertTimePieceWithSplit(splitTime, originalPiece)
+            }
+        )
+    } else {
+        // 普通只读列表
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(timePieces) { timePiece ->
+                TimePieceCard(
+                    timePiece = timePiece,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    onClick = if (onEdit != null) { { onEdit(timePiece) } } else null
+                )
+            }
         }
     }
 }

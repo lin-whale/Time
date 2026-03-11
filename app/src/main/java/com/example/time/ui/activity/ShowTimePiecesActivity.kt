@@ -59,6 +59,7 @@ fun showTimePieces(viewModel: TimeViewModel){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
     Column {
         DatePeriodPicker(viewModel = viewModel)
-        TimePieceList(timePieces = timePieces)
+        // 传入 viewModel 以支持编辑功能（点击记录可编辑时间、事件名称）
+        TimePieceList(timePieces = timePieces, viewModel = viewModel)
     }
 }
