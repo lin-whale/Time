@@ -107,7 +107,16 @@ fun TimePieceList(
                 editingPiece = null
             },
             onInsertBefore = { splitTime, originalPiece ->
-                viewModel.insertTimePieceWithSplit(splitTime, originalPiece)
+                // 创建新的时间片段（继承原片段的事件信息）
+                val newPiece = TimePiece(
+                    timePoint = splitTime,
+                    fromTimePoint = originalPiece.fromTimePoint,
+                    emotion = originalPiece.emotion,
+                    lastTimeRecord = "",
+                    mainEvent = originalPiece.mainEvent,
+                    subEvent = originalPiece.subEvent
+                )
+                viewModel.insertTimePieceWithSplit(splitTime, originalPiece, newPiece)
                 editingPiece = null
             },
             onCancel = { editingPiece = null },
