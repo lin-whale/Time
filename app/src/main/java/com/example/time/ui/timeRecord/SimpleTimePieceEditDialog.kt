@@ -132,7 +132,7 @@ fun SimpleTimePieceEditDialog(
                         // 时间更早的记录（显示在上方）
                         if (earlierPiece != null) {
                             TimelineBar(
-                                label = "后一条: ${earlierPiece.mainEvent}",
+                                label = "前一条: ${earlierPiece.mainEvent}",
                                 fromTime = earlierPiece.fromTimePoint,
                                 toTime = adjustedEarlier?.timePoint ?: earlierPiece.timePoint,
                                 color = if (adjustedEarlier != null) 
@@ -158,7 +158,7 @@ fun SimpleTimePieceEditDialog(
                         if (laterPiece != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             TimelineBar(
-                                label = "前一条: ${laterPiece.mainEvent}",
+                                label = "后一条: ${laterPiece.mainEvent}",
                                 fromTime = adjustedLater?.fromTimePoint ?: laterPiece.fromTimePoint,
                                 toTime = laterPiece.timePoint,
                                 color = if (adjustedLater != null) 
