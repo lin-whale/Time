@@ -13,6 +13,8 @@
 package com.example.time.ui.timeRecord
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -56,6 +58,7 @@ fun SubmitConfirmDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.85f)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
@@ -64,28 +67,38 @@ fun SubmitConfirmDialog(
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxSize()
             ) {
-                // 标题
-                Text(
-                    text = "📝 确认记录",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // 标题（固定顶部）
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "📝 确认记录",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Divider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        thickness = 1.dp
+                    )
+                }
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 分隔线
-                Divider(
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    thickness = 1.dp
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
+                // 可滚动内容区
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                 
                 // 事件名称显示
                 Card(
@@ -242,11 +255,17 @@ fun SubmitConfirmDialog(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // 底部按钮区（固定）
+            Column {
+                Divider()
                 
-                // 操作按钮
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // 取消按钮
@@ -270,6 +289,7 @@ fun SubmitConfirmDialog(
                         Text("✓ 确认记录")
                     }
                 }
+            }
             }
         }
     }
