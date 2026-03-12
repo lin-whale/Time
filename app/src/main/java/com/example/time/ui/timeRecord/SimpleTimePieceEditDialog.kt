@@ -35,18 +35,18 @@ import kotlin.math.roundToLong
  * 简化版时间编辑对话框
  * 
  * @param currentPiece 当前编辑的记录
- * @param prevPiece 前一条记录（时间上更早）
- * @param nextPiece 后一条记录（时间上更晚）
- * @param onSave 保存回调 (当前记录, 前一条调整, 后一条调整)
+ * @param earlierPiece 时间上更早的记录（会显示在"前一条"）
+ * @param laterPiece 时间上更晚的记录（会显示在"后一条"）
+ * @param onSave 保存回调 (当前记录, 更早记录的调整, 更晚记录的调整)
  * @param onDelete 删除回调
  * @param onCancel 取消回调
  */
 @Composable
 fun SimpleTimePieceEditDialog(
     currentPiece: TimePiece,
-    prevPiece: TimePiece? = null,
-    nextPiece: TimePiece? = null,
-    onSave: (current: TimePiece, prev: TimePiece?, next: TimePiece?) -> Unit,
+    earlierPiece: TimePiece? = null,
+    laterPiece: TimePiece? = null,
+    onSave: (current: TimePiece, adjustedEarlier: TimePiece?, adjustedLater: TimePiece?) -> Unit,
     onDelete: (TimePiece) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -62,12 +62,14 @@ fun SimpleTimePieceEditDialog(
     var continuousMode by remember { mutableStateOf(true) }
     
     // 计算影响的记录
-    val adjustedPrev = if (continuousMode && prevPiece != null && editedFromTime != currentPiece.fromTimePoint) {
-        prevPiece.copy(timePoint = editedFromTime)
+    // 开始时间变化 → 影响时间更早的记录（缩短/延长其结束时间）
+    val adjustedEarlier = if (continuousMode && earlierPiece != null && editedFromTime != currentPiece.fromTimePoint) {
+        earlierPiece.copy(timePoint = editedFromTime)
     } else null
     
-    val adjustedNext = if (continuousMode && nextPiece != null && editedToTime != currentPiece.timePoint) {
-        nextPiece.copy(fromTimePoint = editedToTime)
+    // 结束时间变化 → 影响时间更晚的记录（延后/提前其开始时间）
+    val adjustedLater = if (continuousMode && laterPiece != null && editedToTime != currentPiece.timePoint) {
+        laterPiece.copy(fromTimePoint = editedToTime)
     } else null
     
     Dialog(onDismissRequest = onCancel) {
@@ -127,17 +129,17 @@ fun SimpleTimePieceEditDialog(
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         
-                        // 前一条记录（如果有）
-                        if (prevPiece != null) {
+                        // 时间更早的记录（如果有）
+                        if (earlierPiece != null) {
                             TimelineBar(
-                                label = "前一条: ${prevPiece.mainEvent}",
-                                fromTime = prevPiece.fromTimePoint,
-                                toTime = adjustedPrev?.timePoint ?: prevPiece.timePoint,
-                                color = if (adjustedPrev != null) 
+                                label = "前一条: ${earlierPiece.mainEvent}",
+                                fromTime = earlierPiece.fromTimePoint,
+                                toTime = adjustedEarlier?.timePoint ?: earlierPiece.timePoint,
+                                color = if (adjustedEarlier != null) 
                                     MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
                                 else 
                                     Color.Gray.copy(alpha = 0.3f),
-                                showChange = adjustedPrev != null
+                                showChange = adjustedEarlier != null
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -152,18 +154,18 @@ fun SimpleTimePieceEditDialog(
                             editable = true
                         )
                         
-                        // 后一条记录（如果有）
-                        if (nextPiece != null) {
+                        // 时间更晚的记录（如果有）
+                        if (laterPiece != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             TimelineBar(
-                                label = "后一条: ${nextPiece.mainEvent}",
-                                fromTime = adjustedNext?.fromTimePoint ?: nextPiece.fromTimePoint,
-                                toTime = nextPiece.timePoint,
-                                color = if (adjustedNext != null) 
+                                label = "后一条: ${laterPiece.mainEvent}",
+                                fromTime = adjustedLater?.fromTimePoint ?: laterPiece.fromTimePoint,
+                                toTime = laterPiece.timePoint,
+                                color = if (adjustedLater != null) 
                                     MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
                                 else 
                                     Color.Gray.copy(alpha = 0.3f),
-                                showChange = adjustedNext != null
+                                showChange = adjustedLater != null
                             )
                         }
                     }
@@ -295,7 +297,7 @@ fun SimpleTimePieceEditDialog(
                                 emotion = editedEmotion,
                                 lastTimeRecord = editedRecord
                             )
-                            onSave(updated, adjustedPrev, adjustedNext)
+                            onSave(updated, adjustedEarlier, adjustedLater)
                         },
                         modifier = Modifier.weight(1f),
                         enabled = editedMainEvent.isNotBlank() && editedFromTime < editedToTime

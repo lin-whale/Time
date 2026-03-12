@@ -81,38 +81,38 @@ fun TimePieceList(
         val piece = editingPiece!!
         val pieceIndex = timePieces.indexOf(piece)
         
-        // 列表是倒序的：index小=时间晚
-        val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null
-        val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null
+        // 列表是倒序的：index小=时间晚, index大=时间早
+        val laterPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null  // 时间更晚
+        val earlierPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null  // 时间更早
         
         SimpleTimePieceEditDialog(
             currentPiece = piece,
-            prevPiece = prevPiece,
-            nextPiece = nextPiece,
-            onSave = { updated, adjustedPrev, adjustedNext ->
+            earlierPiece = earlierPiece,
+            laterPiece = laterPiece,
+            onSave = { updated, adjustedEarlier, adjustedLater ->
                 // 保存当前记录
                 viewModel.updateTimePiece(updated)
                 
                 // 保存被调整的相邻记录（如果有）
-                adjustedPrev?.let { viewModel.updateTimePiece(it) }
-                adjustedNext?.let { viewModel.updateTimePiece(it) }
+                adjustedEarlier?.let { viewModel.updateTimePiece(it) }
+                adjustedLater?.let { viewModel.updateTimePiece(it) }
                 
                 editingPiece = null
             },
             onDelete = { deleted ->
                 // 删除记录时，需要填补时间空隙
-                if (prevPiece != null && nextPiece != null) {
-                    // 中间记录：让前一条延长到后一条的开始
-                    val adjustedPrev = prevPiece.copy(timePoint = nextPiece.fromTimePoint)
-                    viewModel.updateTimePiece(adjustedPrev)
-                } else if (prevPiece != null && nextPiece == null) {
-                    // 最新记录：让前一条延长到被删除记录的结束时间
-                    val adjustedPrev = prevPiece.copy(timePoint = deleted.timePoint)
-                    viewModel.updateTimePiece(adjustedPrev)
-                } else if (prevPiece == null && nextPiece != null) {
-                    // 最早记录：让后一条的开始时间提前
-                    val adjustedNext = nextPiece.copy(fromTimePoint = deleted.fromTimePoint)
-                    viewModel.updateTimePiece(adjustedNext)
+                if (earlierPiece != null && laterPiece != null) {
+                    // 中间记录：让时间更早的记录延长到时间更晚记录的开始
+                    val adjustedEarlier = earlierPiece.copy(timePoint = laterPiece.fromTimePoint)
+                    viewModel.updateTimePiece(adjustedEarlier)
+                } else if (earlierPiece != null && laterPiece == null) {
+                    // 最新记录：让时间更早的记录延长到被删除记录的结束时间
+                    val adjustedEarlier = earlierPiece.copy(timePoint = deleted.timePoint)
+                    viewModel.updateTimePiece(adjustedEarlier)
+                } else if (earlierPiece == null && laterPiece != null) {
+                    // 最早记录：让时间更晚记录的开始时间提前
+                    val adjustedLater = laterPiece.copy(fromTimePoint = deleted.fromTimePoint)
+                    viewModel.updateTimePiece(adjustedLater)
                 }
                 
                 viewModel.deleteTimePiece(deleted)
