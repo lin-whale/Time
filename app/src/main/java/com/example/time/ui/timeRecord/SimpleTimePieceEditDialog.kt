@@ -129,17 +129,17 @@ fun SimpleTimePieceEditDialog(
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         
-                        // 时间更早的记录（如果有）
-                        if (earlierPiece != null) {
+                        // 时间更晚的记录（显示在前面）
+                        if (laterPiece != null) {
                             TimelineBar(
-                                label = "前一条: ${earlierPiece.mainEvent}",
-                                fromTime = earlierPiece.fromTimePoint,
-                                toTime = adjustedEarlier?.timePoint ?: earlierPiece.timePoint,
-                                color = if (adjustedEarlier != null) 
+                                label = "前一条: ${laterPiece.mainEvent}",
+                                fromTime = adjustedLater?.fromTimePoint ?: laterPiece.fromTimePoint,
+                                toTime = laterPiece.timePoint,
+                                color = if (adjustedLater != null) 
                                     MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
                                 else 
                                     Color.Gray.copy(alpha = 0.3f),
-                                showChange = adjustedEarlier != null
+                                showChange = adjustedLater != null
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -154,18 +154,18 @@ fun SimpleTimePieceEditDialog(
                             editable = true
                         )
                         
-                        // 时间更晚的记录（如果有）
-                        if (laterPiece != null) {
+                        // 时间更早的记录（显示在后面）
+                        if (earlierPiece != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             TimelineBar(
-                                label = "后一条: ${laterPiece.mainEvent}",
-                                fromTime = adjustedLater?.fromTimePoint ?: laterPiece.fromTimePoint,
-                                toTime = laterPiece.timePoint,
-                                color = if (adjustedLater != null) 
+                                label = "后一条: ${earlierPiece.mainEvent}",
+                                fromTime = earlierPiece.fromTimePoint,
+                                toTime = adjustedEarlier?.timePoint ?: earlierPiece.timePoint,
+                                color = if (adjustedEarlier != null) 
                                     MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
                                 else 
                                     Color.Gray.copy(alpha = 0.3f),
-                                showChange = adjustedLater != null
+                                showChange = adjustedEarlier != null
                             )
                         }
                     }
