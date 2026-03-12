@@ -43,12 +43,16 @@ import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.timeRecord.SimpleTimePieceEditDialog
+import com.example.time.ui.components.ModernTimePieceCard
 
 @Composable
 fun TimePieceListColumn(timePieces: List<TimePiece>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         for (timePiece in timePieces) {
-            TimePieceCard(timePiece = timePiece)
+            // 测试：使用现代化卡片
+            ModernTimePieceCard(timePiece = timePiece)
+            // 备份：旧版卡片
+            // TimePieceCard(timePiece = timePiece)
         }
     }
 }
