@@ -314,10 +314,10 @@ fun TimePieceEditDialog(
         }
     }
     
-    // 开始时间选择器 - 范围：前一天 到 当前结束时间
+    // 开始时间选择器 - 范围：前2小时 到 当前结束时间
     if (isEditingFromTime) {
         TimePickerDialog(
-            latestTime = editedFromTime - 24 * 60 * 60 * 1000L,  // 当前开始时间往前24小时
+            latestTime = editedFromTime - 2 * 60 * 60 * 1000L,  // 当前开始时间往前2小时
             maxTime = editedToTime - 60 * 1000L,  // 至少比结束时间早1分钟
             onTimeSelected = { newTime ->
                 if (newTime < editedToTime) {
@@ -329,11 +329,11 @@ fun TimePieceEditDialog(
         )
     }
     
-    // 结束时间选择器 - 范围：当前开始时间 到 后一天
+    // 结束时间选择器 - 范围：当前开始时间 到 后2小时
     if (isEditingToTime) {
         TimePickerDialog(
             latestTime = editedFromTime + 60 * 1000L,  // 至少比开始时间晚1分钟
-            maxTime = editedToTime + 24 * 60 * 60 * 1000L,  // 当前结束时间往后24小时
+            maxTime = editedToTime + 2 * 60 * 60 * 1000L,  // 当前结束时间往后2小时
             onTimeSelected = { newTime ->
                 if (newTime > editedFromTime) {
                     editedToTime = newTime
