@@ -43,12 +43,13 @@ import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.timeRecord.SimpleTimePieceEditDialog
+import com.example.time.ui.components.ModernTimePieceCard
 
 @Composable
 fun TimePieceListColumn(timePieces: List<TimePiece>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         for (timePiece in timePieces) {
-            TimePieceCard(timePiece = timePiece)
+            ModernTimePieceCard(timePiece = timePiece)
         }
     }
 }
@@ -64,11 +65,11 @@ fun TimePieceList(
 ) {
     var editingPiece by remember { mutableStateOf<TimePiece?>(null) }
     
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(timePieces) { timePiece ->
-            TimePieceCard(
+            ModernTimePieceCard(
                 timePiece = timePiece,
-                modifier = Modifier.padding(horizontal = 8.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 onClick = if (viewModel != null) {
                     { editingPiece = timePiece }
                 } else null
