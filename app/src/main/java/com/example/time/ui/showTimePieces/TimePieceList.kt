@@ -100,26 +100,35 @@ fun TimePieceList(
         TimePieceEditDialog(
             timePiece = piece,
             onSave = { updated ->
-                // 保存时自动调整相邻记录以保持时间连续
+                // 保存时检查是否需要调整相邻记录
+                // 
+                // 原则：只在产生时间重叠时才自动调整相邻记录
+                // 如果用户只是缩短当前记录的时间范围（不与相邻记录重叠），不影响相邻记录
                 // 
                 // 原始状态（假设连续）：
                 // prevPiece: 09:00 → 10:00
                 // piece:     10:00 → 11:00
                 // nextPiece: 11:00 → 12:00
                 //
-                // 如果把 piece 改成 09:30 → 11:30：
-                // prevPiece: 09:00 → 09:30  （结束时间改为 updated.fromTimePoint）
-                // piece:     09:30 → 11:30  （保存用户的修改）
-                // nextPiece: 11:30 → 12:00  （开始时间改为 updated.timePoint）
+                // 场景1: 把 piece 改成 09:30 → 11:00（开始时间提前，与 prevPiece 重叠）
+                //   → prevPiece.timePoint 需要调整为 09:30
+                //
+                // 场景2: 把 piece 改成 10:00 → 11:30（结束时间延后，与 nextPiece 重叠）
+                //   → nextPiece.fromTimePoint 需要调整为 11:30
+                //
+                // 场景3: 把 piece 改成 10:30 → 10:45（缩短，不重叠）
+                //   → 不调整相邻记录（会产生时间空隙，这是用户主动选择的）
                 
-                // 1. 调整前一条记录的结束时间 = 当前记录的新开始时间
-                if (prevPiece != null) {
+                // 1. 检查是否与前一条记录重叠（当前开始时间 < 前一条结束时间）
+                if (prevPiece != null && updated.fromTimePoint < prevPiece.timePoint) {
+                    // 当前记录的开始时间侵入了前一条记录的范围，需要调整前一条的结束时间
                     val adjustedPrev = prevPiece.copy(timePoint = updated.fromTimePoint)
                     viewModel.updateTimePiece(adjustedPrev)
                 }
                 
-                // 2. 调整后一条记录的开始时间 = 当前记录的新结束时间
-                if (nextPiece != null) {
+                // 2. 检查是否与后一条记录重叠（当前结束时间 > 后一条开始时间）
+                if (nextPiece != null && updated.timePoint > nextPiece.fromTimePoint) {
+                    // 当前记录的结束时间侵入了后一条记录的范围，需要调整后一条的开始时间
                     val adjustedNext = nextPiece.copy(fromTimePoint = updated.timePoint)
                     viewModel.updateTimePiece(adjustedNext)
                 }
