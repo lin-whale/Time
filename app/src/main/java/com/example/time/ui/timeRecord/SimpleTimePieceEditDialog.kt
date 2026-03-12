@@ -13,7 +13,9 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -177,7 +179,7 @@ fun SimpleTimePieceEditDialog(
                         // 上下调整按钮
                         Row {
                             IconButton(onClick = { editedFromTime -= 5 * 60 * 1000 }) {
-                                Icon(Icons.Default.Remove, "减5分钟", modifier = Modifier.size(16.dp))
+                                Text("-5", fontSize = 14.sp)
                             }
                             IconButton(onClick = { editedFromTime += 5 * 60 * 1000 }) {
                                 Icon(Icons.Default.Add, "加5分钟", modifier = Modifier.size(16.dp))
@@ -198,7 +200,7 @@ fun SimpleTimePieceEditDialog(
                         // 上下调整按钮
                         Row {
                             IconButton(onClick = { editedToTime -= 5 * 60 * 1000 }) {
-                                Icon(Icons.Default.Remove, "减5分钟", modifier = Modifier.size(16.dp))
+                                Text("-5", fontSize = 14.sp)
                             }
                             IconButton(onClick = { editedToTime += 5 * 60 * 1000 }) {
                                 Icon(Icons.Default.Add, "加5分钟", modifier = Modifier.size(16.dp))
