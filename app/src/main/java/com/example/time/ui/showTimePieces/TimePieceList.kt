@@ -81,9 +81,9 @@ fun TimePieceList(
         val piece = editingPiece!!
         val pieceIndex = timePieces.indexOf(piece)
         
-        // 列表是倒序的：index小=时间晚, index大=时间早
-        val laterPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null  // 时间更晚
-        val earlierPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null  // 时间更早
+        // 列表是正序的：index小=时间早, index大=时间晚
+        val earlierPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null  // 时间更早（index小）
+        val laterPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null  // 时间更晚（index大）
         
         SimpleTimePieceEditDialog(
             currentPiece = piece,
