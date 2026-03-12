@@ -331,20 +331,20 @@ fun TimePieceEditDialog(
     }
     
     // 开始时间选择器
-    // 范围：max(minTime, 当前开始时间-2小时) 到 当前结束时间-1分钟
-    // 确保：开始时间 < 结束时间
+    // 范围更宽松：允许在当前开始时间前后各2小时内调整
+    // 不再严格限制必须小于结束时间（用户可能需要先调开始再调结束来修复错误数据）
     if (isEditingFromTime) {
-        val fromTimeMin = maxOf(minTime, editedFromTime - 2 * 60 * 60 * 1000L)
-        val fromTimeMax = editedToTime - 60 * 1000L  // 必须比结束时间早至少1分钟
+        // 计算合理的时间范围：当前开始时间前后各2小时
+        val baseFromTime = if (editedFromTime > 0) editedFromTime else editedToTime - 60 * 60 * 1000L
+        val fromTimeMin = maxOf(0L, baseFromTime - 2 * 60 * 60 * 1000L)
+        val fromTimeMax = baseFromTime + 2 * 60 * 60 * 1000L
         
         TimePickerDialog(
             latestTime = fromTimeMin,
             maxTime = fromTimeMax,
-            initialTime = editedFromTime,  // 初始选中当前开始时间
+            initialTime = baseFromTime,
             onTimeSelected = { newTime ->
-                // 强制约束：开始时间必须小于结束时间
-                val constrainedTime = minOf(newTime, editedToTime - 60 * 1000L)
-                editedFromTime = maxOf(constrainedTime, minTime)
+                editedFromTime = newTime
                 isEditingFromTime = false
             },
             onCancel = { isEditingFromTime = false }
@@ -352,20 +352,18 @@ fun TimePieceEditDialog(
     }
     
     // 结束时间选择器
-    // 范围：当前开始时间+1分钟 到 min(maxTime, 当前结束时间+2小时)
-    // 确保：结束时间 > 开始时间
+    // 范围更宽松：允许在当前结束时间前后各2小时内调整
     if (isEditingToTime) {
-        val toTimeMin = editedFromTime + 60 * 1000L  // 必须比开始时间晚至少1分钟
-        val toTimeMax = minOf(maxTime, editedToTime + 2 * 60 * 60 * 1000L)
+        val baseToTime = if (editedToTime > 0) editedToTime else editedFromTime + 60 * 60 * 1000L
+        val toTimeMin = maxOf(0L, baseToTime - 2 * 60 * 60 * 1000L)
+        val toTimeMax = baseToTime + 2 * 60 * 60 * 1000L
         
         TimePickerDialog(
             latestTime = toTimeMin,
             maxTime = toTimeMax,
-            initialTime = editedToTime,  // 初始选中当前结束时间
+            initialTime = baseToTime,
             onTimeSelected = { newTime ->
-                // 强制约束：结束时间必须大于开始时间
-                val constrainedTime = maxOf(newTime, editedFromTime + 60 * 1000L)
-                editedToTime = minOf(constrainedTime, maxTime)
+                editedToTime = newTime
                 isEditingToTime = false
             },
             onCancel = { isEditingToTime = false }
