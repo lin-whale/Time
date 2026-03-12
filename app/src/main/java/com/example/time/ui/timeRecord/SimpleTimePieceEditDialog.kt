@@ -9,8 +9,9 @@
 package com.example.time.ui.timeRecord
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -73,17 +74,18 @@ fun SimpleTimePieceEditDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f),
+                .fillMaxHeight(0.85f),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
             ) {
-                // 标题栏
+                // 标题栏（固定在顶部）
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -98,9 +100,15 @@ fun SimpleTimePieceEditDialog(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
                 Divider()
-                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 可滚动内容区
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
                 
                 // ===== 可视化时间轴 =====
                 Card(
@@ -258,10 +266,16 @@ fun SimpleTimePieceEditDialog(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // 底部按钮区（固定）
+            Column {
+                Divider()
                 
-                // ===== 操作按钮 =====
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
@@ -289,6 +303,7 @@ fun SimpleTimePieceEditDialog(
                         Text("💾 保存")
                     }
                 }
+            }
             }
         }
     }
