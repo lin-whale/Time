@@ -189,11 +189,22 @@ fun TimePieceEditDialog(
                         val durationMinutes = (editedToTime - editedFromTime) / 60000
                         val hours = durationMinutes / 60
                         val minutes = durationMinutes % 60
-                        Text(
-                            text = "时长：${hours}小时${minutes}分钟",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
+                        
+                        if (editedFromTime >= editedToTime) {
+                            // 时间冲突警告
+                            Text(
+                                text = "⚠️ 错误：结束时间必须晚于开始时间！",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Text(
+                                text = "时长：${hours}小时${minutes}分钟",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
                 
@@ -292,20 +303,25 @@ fun TimePieceEditDialog(
                     
                     Button(
                         onClick = {
+                            // 最终校验：确保开始时间 < 结束时间
+                            val finalFromTime = minOf(editedFromTime, editedToTime - 60 * 1000L)
+                            val finalToTime = maxOf(editedToTime, editedFromTime + 60 * 1000L)
+                            
                             // 构建修改后的TimePiece
                             val updatedPiece = timePiece.copy(
                                 mainEvent = editedMainEvent,
                                 subEvent = editedSubEvent,
                                 emotion = editedEmotion,
                                 lastTimeRecord = editedRecord,
-                                fromTimePoint = editedFromTime,
-                                timePoint = editedToTime
+                                fromTimePoint = finalFromTime,
+                                timePoint = finalToTime
                             )
                             onSave(updatedPiece)
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = editedMainEvent.isNotBlank()
+                        // 新增校验：开始时间必须早于结束时间
+                        enabled = editedMainEvent.isNotBlank() && editedFromTime < editedToTime
                     ) {
                         Text("💾 保存")
                     }
@@ -314,30 +330,42 @@ fun TimePieceEditDialog(
         }
     }
     
-    // 开始时间选择器 - 范围：前2小时 到 当前结束时间
+    // 开始时间选择器
+    // 范围：max(minTime, 当前开始时间-2小时) 到 当前结束时间-1分钟
+    // 确保：开始时间 < 结束时间
     if (isEditingFromTime) {
+        val fromTimeMin = maxOf(minTime, editedFromTime - 2 * 60 * 60 * 1000L)
+        val fromTimeMax = editedToTime - 60 * 1000L  // 必须比结束时间早至少1分钟
+        
         TimePickerDialog(
-            latestTime = editedFromTime - 2 * 60 * 60 * 1000L,  // 当前开始时间往前2小时
-            maxTime = editedToTime - 60 * 1000L,  // 至少比结束时间早1分钟
+            latestTime = fromTimeMin,
+            maxTime = fromTimeMax,
+            initialTime = editedFromTime,  // 初始选中当前开始时间
             onTimeSelected = { newTime ->
-                if (newTime < editedToTime) {
-                    editedFromTime = newTime
-                }
+                // 强制约束：开始时间必须小于结束时间
+                val constrainedTime = minOf(newTime, editedToTime - 60 * 1000L)
+                editedFromTime = maxOf(constrainedTime, minTime)
                 isEditingFromTime = false
             },
             onCancel = { isEditingFromTime = false }
         )
     }
     
-    // 结束时间选择器 - 范围：当前开始时间 到 后2小时
+    // 结束时间选择器
+    // 范围：当前开始时间+1分钟 到 min(maxTime, 当前结束时间+2小时)
+    // 确保：结束时间 > 开始时间
     if (isEditingToTime) {
+        val toTimeMin = editedFromTime + 60 * 1000L  // 必须比开始时间晚至少1分钟
+        val toTimeMax = minOf(maxTime, editedToTime + 2 * 60 * 60 * 1000L)
+        
         TimePickerDialog(
-            latestTime = editedFromTime + 60 * 1000L,  // 至少比开始时间晚1分钟
-            maxTime = editedToTime + 2 * 60 * 60 * 1000L,  // 当前结束时间往后2小时
+            latestTime = toTimeMin,
+            maxTime = toTimeMax,
+            initialTime = editedToTime,  // 初始选中当前结束时间
             onTimeSelected = { newTime ->
-                if (newTime > editedFromTime) {
-                    editedToTime = newTime
-                }
+                // 强制约束：结束时间必须大于开始时间
+                val constrainedTime = maxOf(newTime, editedFromTime + 60 * 1000L)
+                editedToTime = minOf(constrainedTime, maxTime)
                 isEditingToTime = false
             },
             onCancel = { isEditingToTime = false }

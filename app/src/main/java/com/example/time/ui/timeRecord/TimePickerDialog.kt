@@ -21,6 +21,7 @@ import com.example.time.logic.utils.convertTimeFormat
  * 
  * @param latestTime 最小可选时间（起始时间）
  * @param maxTime 最大可选时间
+ * @param initialTime 初始选中时间（可选，默认为中间值）
  * @param onTimeSelected 选择时间后的回调
  * @param onCancel 取消回调
  */
@@ -28,6 +29,7 @@ import com.example.time.logic.utils.convertTimeFormat
 fun TimePickerDialog(
     latestTime: Long, 
     maxTime: Long = System.currentTimeMillis(),
+    initialTime: Long? = null,
     onTimeSelected: (Long) -> Unit, 
     onCancel: () -> Unit
 ) {
@@ -38,12 +40,26 @@ fun TimePickerDialog(
     // 计算时间范围
     val timeRange = upperBound - minTime
     
-    // 默认选择中间时间
-    var selectedTime by remember(minTime, upperBound) { 
-        mutableStateOf((minTime + upperBound) / 2) 
+    // 计算初始时间：使用传入的 initialTime（需约束在范围内），否则默认中间值
+    val effectiveInitialTime = when {
+        initialTime != null && initialTime in minTime..upperBound -> initialTime
+        initialTime != null && initialTime < minTime -> minTime
+        initialTime != null && initialTime > upperBound -> upperBound
+        else -> (minTime + upperBound) / 2
     }
-    var ratio by remember(minTime, upperBound) { 
-        mutableStateOf(500f) 
+    
+    // 计算初始 ratio（0~1000）
+    val initialRatio = if (timeRange > 0) {
+        ((effectiveInitialTime - minTime).toFloat() / timeRange * 1000f).coerceIn(0f, 1000f)
+    } else {
+        500f
+    }
+    
+    var selectedTime by remember(minTime, upperBound, initialTime) { 
+        mutableStateOf(effectiveInitialTime) 
+    }
+    var ratio by remember(minTime, upperBound, initialTime) { 
+        mutableStateOf(initialRatio) 
     }
 
     AlertDialog(
