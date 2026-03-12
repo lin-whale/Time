@@ -74,16 +74,28 @@ fun analyzeEditImpact(
     val toDelete = mutableListOf<TimePiece>()
     val toAdjust = mutableListOf<Pair<TimePiece, TimePiece>>()
     
+    // Debug 日志
+    android.util.Log.d("EditImpact", "=== 分析开始 ===")
+    android.util.Log.d("EditImpact", "Original: ${original.mainEvent} ${original.fromTimePoint} → ${original.timePoint}")
+    android.util.Log.d("EditImpact", "Updated: ${updated.mainEvent} ${updated.fromTimePoint} → ${updated.timePoint}")
+    android.util.Log.d("EditImpact", "PieceIndex: $pieceIndex, Total: ${allPieces.size}")
+    
     // 1. 分析开始时间提前的影响（影响之前的记录）
     if (updated.fromTimePoint < original.fromTimePoint) {
+        android.util.Log.d("EditImpact", "开始时间提前: ${original.fromTimePoint} → ${updated.fromTimePoint}")
+        
         for (i in (pieceIndex + 1) until allPieces.size) {
             val earlierPiece = allPieces[i]
+            android.util.Log.d("EditImpact", "检查记录[$i]: ${earlierPiece.mainEvent} ${earlierPiece.fromTimePoint} → ${earlierPiece.timePoint}")
             
             if (earlierPiece.timePoint <= updated.fromTimePoint) {
+                android.util.Log.d("EditImpact", "  → 不受影响（结束时间 ${earlierPiece.timePoint} <= 新开始 ${updated.fromTimePoint}）")
                 break
             } else if (earlierPiece.fromTimePoint >= updated.fromTimePoint) {
+                android.util.Log.d("EditImpact", "  → 完全覆盖，删除")
                 toDelete.add(earlierPiece)
             } else {
+                android.util.Log.d("EditImpact", "  → 部分覆盖，调整结束时间 ${earlierPiece.timePoint} → ${updated.fromTimePoint}")
                 val adjusted = earlierPiece.copy(timePoint = updated.fromTimePoint)
                 toAdjust.add(earlierPiece to adjusted)
                 break
@@ -93,20 +105,28 @@ fun analyzeEditImpact(
     
     // 2. 分析结束时间延后的影响（影响之后的记录）
     if (updated.timePoint > original.timePoint) {
+        android.util.Log.d("EditImpact", "结束时间延后: ${original.timePoint} → ${updated.timePoint}")
+        
         for (i in (pieceIndex - 1) downTo 0) {
             val laterPiece = allPieces[i]
+            android.util.Log.d("EditImpact", "检查记录[$i]: ${laterPiece.mainEvent} ${laterPiece.fromTimePoint} → ${laterPiece.timePoint}")
             
             if (laterPiece.fromTimePoint >= updated.timePoint) {
+                android.util.Log.d("EditImpact", "  → 不受影响（开始时间 ${laterPiece.fromTimePoint} >= 新结束 ${updated.timePoint}）")
                 break
             } else if (laterPiece.timePoint <= updated.timePoint) {
+                android.util.Log.d("EditImpact", "  → 完全覆盖，删除")
                 toDelete.add(laterPiece)
             } else {
+                android.util.Log.d("EditImpact", "  → 部分覆盖，调整开始时间 ${laterPiece.fromTimePoint} → ${updated.timePoint}")
                 val adjusted = laterPiece.copy(fromTimePoint = updated.timePoint)
                 toAdjust.add(laterPiece to adjusted)
                 break
             }
         }
     }
+    
+    android.util.Log.d("EditImpact", "结果: 删除${toDelete.size}条, 调整${toAdjust.size}条")
     
     return EditImpactAnalysis(
         piecesToDelete = toDelete,
