@@ -18,10 +18,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,17 +54,70 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
 }
 
 /**
+ * 编辑影响分析结果
+ */
+data class EditImpactAnalysis(
+    val piecesToDelete: List<TimePiece>,      // 将被删除的记录
+    val piecesToAdjust: List<Pair<TimePiece, TimePiece>>,  // (原记录, 调整后) 
+    val hasImpact: Boolean                     // 是否有影响
+)
+
+/**
+ * 分析编辑操作对其他记录的影响
+ */
+fun analyzeEditImpact(
+    original: TimePiece,
+    updated: TimePiece,
+    allPieces: List<TimePiece>,
+    pieceIndex: Int
+): EditImpactAnalysis {
+    val toDelete = mutableListOf<TimePiece>()
+    val toAdjust = mutableListOf<Pair<TimePiece, TimePiece>>()
+    
+    // 1. 分析开始时间提前的影响（影响之前的记录）
+    if (updated.fromTimePoint < original.fromTimePoint) {
+        for (i in (pieceIndex + 1) until allPieces.size) {
+            val earlierPiece = allPieces[i]
+            
+            if (earlierPiece.timePoint <= updated.fromTimePoint) {
+                break
+            } else if (earlierPiece.fromTimePoint >= updated.fromTimePoint) {
+                toDelete.add(earlierPiece)
+            } else {
+                val adjusted = earlierPiece.copy(timePoint = updated.fromTimePoint)
+                toAdjust.add(earlierPiece to adjusted)
+                break
+            }
+        }
+    }
+    
+    // 2. 分析结束时间延后的影响（影响之后的记录）
+    if (updated.timePoint > original.timePoint) {
+        for (i in (pieceIndex - 1) downTo 0) {
+            val laterPiece = allPieces[i]
+            
+            if (laterPiece.fromTimePoint >= updated.timePoint) {
+                break
+            } else if (laterPiece.timePoint <= updated.timePoint) {
+                toDelete.add(laterPiece)
+            } else {
+                val adjusted = laterPiece.copy(fromTimePoint = updated.timePoint)
+                toAdjust.add(laterPiece to adjusted)
+                break
+            }
+        }
+    }
+    
+    return EditImpactAnalysis(
+        piecesToDelete = toDelete,
+        piecesToAdjust = toAdjust,
+        hasImpact = toDelete.isNotEmpty() || toAdjust.isNotEmpty()
+    )
+}
+
+/**
  * 时间片段列表
  * 编辑保存时自动调整相邻记录，保持时间连续不重叠
- * 
- * 时间线示例（列表是倒序的，最新的在前面）：
- * 索引0 (nextPiece): fromTimePoint=11:00, timePoint=12:00 （时间上最晚/最新）
- * 索引1 (piece):     fromTimePoint=10:00, timePoint=11:00 （当前编辑的记录）
- * 索引2 (prevPiece): fromTimePoint=09:00, timePoint=10:00 （时间上最早）
- * 
- * 连续性要求：
- * - prevPiece.timePoint == piece.fromTimePoint （前一条的结束 = 当前的开始）
- * - piece.timePoint == nextPiece.fromTimePoint （当前的结束 = 后一条的开始）
  */
 @Composable
 fun TimePieceList(
@@ -69,6 +125,11 @@ fun TimePieceList(
     viewModel: TimeViewModel? = null
 ) {
     var editingPiece by remember { mutableStateOf<TimePiece?>(null) }
+    
+    // 待确认的编辑操作
+    var pendingUpdate by remember { mutableStateOf<TimePiece?>(null) }
+    var pendingImpact by remember { mutableStateOf<EditImpactAnalysis?>(null) }
+    var pendingPieceIndex by remember { mutableStateOf(-1) }
     
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(timePieces) { timePiece ->
@@ -87,126 +148,46 @@ fun TimePieceList(
         val piece = editingPiece!!
         val pieceIndex = timePieces.indexOf(piece)
         
-        // 列表是倒序的：index小=时间晚，index大=时间早
-        // nextPiece: 时间上在当前记录之后（更晚/更新）的记录
-        // prevPiece: 时间上在当前记录之前（更早）的记录
         val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null
         val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null
         
-        // 时间范围参数（传给对话框，但实际选择范围在对话框内部计算）
         val minTime = prevPiece?.timePoint ?: 0L
         val maxTime = nextPiece?.fromTimePoint ?: System.currentTimeMillis()
         
         TimePieceEditDialog(
             timePiece = piece,
             onSave = { updated ->
-                // 保存时检查是否需要调整相邻记录
-                // 
-                // 重要：修改开始时间可能影响多条之前的记录，修改结束时间可能影响多条之后的记录
-                // 需要遍历所有受影响的记录进行调整或删除
-                // 
-                // 示例：
-                // 记录列表（时间顺序）：
-                // A: 08:00 → 09:00
-                // B: 09:00 → 09:30
-                // C: 09:30 → 10:00
-                // D: 10:00 → 11:00  ← 当前编辑的记录
-                // E: 11:00 → 12:00
-                //
-                // 如果把 D 的开始时间从 10:00 改成 08:30：
-                // - A 的结束时间改为 08:30（被部分覆盖）
-                // - B 被完全覆盖，删除
-                // - C 被完全覆盖，删除
-                // - D 变成 08:30 → 11:00
+                // 分析影响
+                val impact = analyzeEditImpact(piece, updated, timePieces, pieceIndex)
                 
-                // 1. 处理开始时间提前的情况（影响之前的记录）
-                // 列表是倒序的，pieceIndex 之后的元素是时间更早的记录
-                if (updated.fromTimePoint < piece.fromTimePoint) {
-                    // 遍历所有更早的记录
-                    for (i in (pieceIndex + 1) until timePieces.size) {
-                        val earlierPiece = timePieces[i]
-                        
-                        if (earlierPiece.timePoint <= updated.fromTimePoint) {
-                            // 这条记录在新开始时间之前结束，不受影响，后面的更不会受影响
-                            break
-                        } else if (earlierPiece.fromTimePoint >= updated.fromTimePoint) {
-                            // 这条记录被完全覆盖，删除
-                            viewModel.deleteTimePiece(earlierPiece)
-                        } else {
-                            // 这条记录被部分覆盖，调整其结束时间
-                            val adjusted = earlierPiece.copy(timePoint = updated.fromTimePoint)
-                            viewModel.updateTimePiece(adjusted)
-                            break  // 再往前的记录不会受影响了
-                        }
-                    }
+                if (impact.hasImpact) {
+                    // 有影响，显示确认对话框
+                    pendingUpdate = updated
+                    pendingImpact = impact
+                    pendingPieceIndex = pieceIndex
+                    editingPiece = null
+                } else {
+                    // 无影响，直接保存
+                    viewModel.updateTimePiece(updated)
+                    editingPiece = null
                 }
-                
-                // 2. 处理结束时间延后的情况（影响之后的记录）
-                // 列表是倒序的，pieceIndex 之前的元素是时间更晚的记录
-                if (updated.timePoint > piece.timePoint) {
-                    // 遍历所有更晚的记录
-                    for (i in (pieceIndex - 1) downTo 0) {
-                        val laterPiece = timePieces[i]
-                        
-                        if (laterPiece.fromTimePoint >= updated.timePoint) {
-                            // 这条记录在新结束时间之后开始，不受影响，后面的更不会受影响
-                            break
-                        } else if (laterPiece.timePoint <= updated.timePoint) {
-                            // 这条记录被完全覆盖，删除
-                            viewModel.deleteTimePiece(laterPiece)
-                        } else {
-                            // 这条记录被部分覆盖，调整其开始时间
-                            val adjusted = laterPiece.copy(fromTimePoint = updated.timePoint)
-                            viewModel.updateTimePiece(adjusted)
-                            break  // 再往后的记录不会受影响了
-                        }
-                    }
-                }
-                
-                // 3. 保存当前记录
-                viewModel.updateTimePiece(updated)
-                editingPiece = null
             },
             onDelete = { deleted ->
-                // 删除时，让前一条记录的结束时间延长到后一条记录的开始时间
-                // 这样就填补了删除产生的空白
-                //
-                // 删除前：
-                // prevPiece: 09:00 → 10:00
-                // deleted:   10:00 → 11:00  （要删除）
-                // nextPiece: 11:00 → 12:00
-                //
-                // 删除后：
-                // prevPiece: 09:00 → 11:00  （结束时间延长到 nextPiece.fromTimePoint）
-                // nextPiece: 11:00 → 12:00  （不变）
-                
                 if (prevPiece != null && nextPiece != null) {
-                    // 中间记录删除：前一条延长到后一条的开始
                     val adjustedPrev = prevPiece.copy(timePoint = nextPiece.fromTimePoint)
                     viewModel.updateTimePiece(adjustedPrev)
                 } else if (prevPiece != null && nextPiece == null) {
-                    // 删除的是最新一条：前一条延长到被删除记录的结束时间
                     val adjustedPrev = prevPiece.copy(timePoint = deleted.timePoint)
                     viewModel.updateTimePiece(adjustedPrev)
                 } else if (prevPiece == null && nextPiece != null) {
-                    // 删除的是最早一条：后一条的开始时间提前到被删除记录的开始时间
                     val adjustedNext = nextPiece.copy(fromTimePoint = deleted.fromTimePoint)
                     viewModel.updateTimePiece(adjustedNext)
                 }
-                // 如果 prevPiece == null && nextPiece == null，说明只有一条记录，直接删除即可
                 
                 viewModel.deleteTimePiece(deleted)
                 editingPiece = null
             },
             onInsertBefore = { splitTime, originalPiece ->
-                // 在当前记录中间插入一条新记录
-                // 
-                // 原始：piece 10:00 → 12:00
-                // 插入点：11:00
-                // 结果：
-                //   newPiece: 10:00 → 11:00 （新插入的）
-                //   piece:    11:00 → 12:00 （原记录开始时间改为 splitTime）
-                
                 val newPiece = TimePiece(
                     timePoint = splitTime,
                     fromTimePoint = originalPiece.fromTimePoint,
@@ -221,6 +202,107 @@ fun TimePieceList(
             onCancel = { editingPiece = null },
             minTime = minTime,
             maxTime = maxTime
+        )
+    }
+    
+    // 影响确认对话框
+    if (pendingUpdate != null && pendingImpact != null && viewModel != null) {
+        val impact = pendingImpact!!
+        val updated = pendingUpdate!!
+        
+        AlertDialog(
+            onDismissRequest = {
+                pendingUpdate = null
+                pendingImpact = null
+            },
+            title = { 
+                Text(
+                    text = "⚠️ 修改将影响其他记录",
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "此次修改将导致以下变更：",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // 显示将被删除的记录
+                    if (impact.piecesToDelete.isNotEmpty()) {
+                        Text(
+                            text = "🗑️ 将被删除的记录（${impact.piecesToDelete.size}条）：",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        impact.piecesToDelete.forEach { piece ->
+                            Text(
+                                text = "• ${piece.mainEvent}${if (piece.subEvent.isNotEmpty()) "：${piece.subEvent}" else ""}\n  ${convertTimeFormat(piece.fromTimePoint, "MM/dd HH:mm")} → ${convertTimeFormat(piece.timePoint, "HH:mm")}",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    // 显示将被调整的记录
+                    if (impact.piecesToAdjust.isNotEmpty()) {
+                        Text(
+                            text = "✏️ 将被调整的记录（${impact.piecesToAdjust.size}条）：",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        impact.piecesToAdjust.forEach { (original, adjusted) ->
+                            val timeChange = if (original.fromTimePoint != adjusted.fromTimePoint) {
+                                "开始时间 ${convertTimeFormat(original.fromTimePoint, "HH:mm")} → ${convertTimeFormat(adjusted.fromTimePoint, "HH:mm")}"
+                            } else {
+                                "结束时间 ${convertTimeFormat(original.timePoint, "HH:mm")} → ${convertTimeFormat(adjusted.timePoint, "HH:mm")}"
+                            }
+                            Text(
+                                text = "• ${original.mainEvent}：$timeChange",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // 执行删除
+                        impact.piecesToDelete.forEach { piece ->
+                            viewModel.deleteTimePiece(piece)
+                        }
+                        // 执行调整
+                        impact.piecesToAdjust.forEach { (_, adjusted) ->
+                            viewModel.updateTimePiece(adjusted)
+                        }
+                        // 保存当前记录
+                        viewModel.updateTimePiece(updated)
+                        
+                        pendingUpdate = null
+                        pendingImpact = null
+                    }
+                ) {
+                    Text("确认修改")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        pendingUpdate = null
+                        pendingImpact = null
+                    }
+                ) {
+                    Text("取消")
+                }
+            }
         )
     }
 }
