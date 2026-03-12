@@ -53,6 +53,15 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
 /**
  * 时间片段列表
  * 编辑保存时自动调整相邻记录，保持时间连续不重叠
+ * 
+ * 时间线示例（列表是倒序的，最新的在前面）：
+ * 索引0 (nextPiece): fromTimePoint=11:00, timePoint=12:00 （时间上最晚/最新）
+ * 索引1 (piece):     fromTimePoint=10:00, timePoint=11:00 （当前编辑的记录）
+ * 索引2 (prevPiece): fromTimePoint=09:00, timePoint=10:00 （时间上最早）
+ * 
+ * 连续性要求：
+ * - prevPiece.timePoint == piece.fromTimePoint （前一条的结束 = 当前的开始）
+ * - piece.timePoint == nextPiece.fromTimePoint （当前的结束 = 后一条的开始）
  */
 @Composable
 fun TimePieceList(
@@ -79,26 +88,38 @@ fun TimePieceList(
         val pieceIndex = timePieces.indexOf(piece)
         
         // 列表是倒序的：index小=时间晚，index大=时间早
-        val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null  // 时间上更晚的记录
-        val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null  // 时间上更早的记录
+        // nextPiece: 时间上在当前记录之后（更晚/更新）的记录
+        // prevPiece: 时间上在当前记录之前（更早）的记录
+        val nextPiece = if (pieceIndex > 0) timePieces[pieceIndex - 1] else null
+        val prevPiece = if (pieceIndex < timePieces.size - 1) timePieces[pieceIndex + 1] else null
         
-        // 时间范围：允许在相邻记录范围内自由调整
-        val minTime = prevPiece?.fromTimePoint ?: (piece.fromTimePoint - 24 * 60 * 60 * 1000L)
-        val maxTime = nextPiece?.timePoint ?: System.currentTimeMillis()
+        // 时间范围参数（传给对话框，但实际选择范围在对话框内部计算）
+        val minTime = prevPiece?.timePoint ?: 0L
+        val maxTime = nextPiece?.fromTimePoint ?: System.currentTimeMillis()
         
         TimePieceEditDialog(
             timePiece = piece,
             onSave = { updated ->
-                // 自动调整相邻记录以保持时间连续
+                // 保存时自动调整相邻记录以保持时间连续
+                // 
+                // 原始状态（假设连续）：
+                // prevPiece: 09:00 → 10:00
+                // piece:     10:00 → 11:00
+                // nextPiece: 11:00 → 12:00
+                //
+                // 如果把 piece 改成 09:30 → 11:30：
+                // prevPiece: 09:00 → 09:30  （结束时间改为 updated.fromTimePoint）
+                // piece:     09:30 → 11:30  （保存用户的修改）
+                // nextPiece: 11:30 → 12:00  （开始时间改为 updated.timePoint）
                 
-                // 1. 如果开始时间变了，调整前一条记录的结束时间
-                if (prevPiece != null && updated.fromTimePoint != prevPiece.timePoint) {
+                // 1. 调整前一条记录的结束时间 = 当前记录的新开始时间
+                if (prevPiece != null) {
                     val adjustedPrev = prevPiece.copy(timePoint = updated.fromTimePoint)
                     viewModel.updateTimePiece(adjustedPrev)
                 }
                 
-                // 2. 如果结束时间变了，调整后一条记录的开始时间
-                if (nextPiece != null && updated.timePoint != nextPiece.fromTimePoint) {
+                // 2. 调整后一条记录的开始时间 = 当前记录的新结束时间
+                if (nextPiece != null) {
                     val adjustedNext = nextPiece.copy(fromTimePoint = updated.timePoint)
                     viewModel.updateTimePiece(adjustedNext)
                 }
@@ -108,23 +129,45 @@ fun TimePieceList(
                 editingPiece = null
             },
             onDelete = { deleted ->
-                // 删除时，将前一条记录延长到后一条记录的开始时间
+                // 删除时，让前一条记录的结束时间延长到后一条记录的开始时间
+                // 这样就填补了删除产生的空白
+                //
+                // 删除前：
+                // prevPiece: 09:00 → 10:00
+                // deleted:   10:00 → 11:00  （要删除）
+                // nextPiece: 11:00 → 12:00
+                //
+                // 删除后：
+                // prevPiece: 09:00 → 11:00  （结束时间延长到 nextPiece.fromTimePoint）
+                // nextPiece: 11:00 → 12:00  （不变）
+                
                 if (prevPiece != null && nextPiece != null) {
+                    // 中间记录删除：前一条延长到后一条的开始
                     val adjustedPrev = prevPiece.copy(timePoint = nextPiece.fromTimePoint)
                     viewModel.updateTimePiece(adjustedPrev)
-                } else if (prevPiece != null) {
-                    // 删除的是最新一条，前一条延长到当前记录的结束时间
+                } else if (prevPiece != null && nextPiece == null) {
+                    // 删除的是最新一条：前一条延长到被删除记录的结束时间
                     val adjustedPrev = prevPiece.copy(timePoint = deleted.timePoint)
                     viewModel.updateTimePiece(adjustedPrev)
-                } else if (nextPiece != null) {
-                    // 删除的是最早一条，后一条的开始时间提前
+                } else if (prevPiece == null && nextPiece != null) {
+                    // 删除的是最早一条：后一条的开始时间提前到被删除记录的开始时间
                     val adjustedNext = nextPiece.copy(fromTimePoint = deleted.fromTimePoint)
                     viewModel.updateTimePiece(adjustedNext)
                 }
+                // 如果 prevPiece == null && nextPiece == null，说明只有一条记录，直接删除即可
+                
                 viewModel.deleteTimePiece(deleted)
                 editingPiece = null
             },
             onInsertBefore = { splitTime, originalPiece ->
+                // 在当前记录中间插入一条新记录
+                // 
+                // 原始：piece 10:00 → 12:00
+                // 插入点：11:00
+                // 结果：
+                //   newPiece: 10:00 → 11:00 （新插入的）
+                //   piece:    11:00 → 12:00 （原记录开始时间改为 splitTime）
+                
                 val newPiece = TimePiece(
                     timePoint = splitTime,
                     fromTimePoint = originalPiece.fromTimePoint,
