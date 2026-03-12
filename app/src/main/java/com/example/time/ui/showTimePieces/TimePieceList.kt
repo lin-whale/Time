@@ -102,35 +102,65 @@ fun TimePieceList(
             onSave = { updated ->
                 // 保存时检查是否需要调整相邻记录
                 // 
-                // 原则：只在产生时间重叠时才自动调整相邻记录
-                // 如果用户只是缩短当前记录的时间范围（不与相邻记录重叠），不影响相邻记录
+                // 重要：修改开始时间可能影响多条之前的记录，修改结束时间可能影响多条之后的记录
+                // 需要遍历所有受影响的记录进行调整或删除
                 // 
-                // 原始状态（假设连续）：
-                // prevPiece: 09:00 → 10:00
-                // piece:     10:00 → 11:00
-                // nextPiece: 11:00 → 12:00
+                // 示例：
+                // 记录列表（时间顺序）：
+                // A: 08:00 → 09:00
+                // B: 09:00 → 09:30
+                // C: 09:30 → 10:00
+                // D: 10:00 → 11:00  ← 当前编辑的记录
+                // E: 11:00 → 12:00
                 //
-                // 场景1: 把 piece 改成 09:30 → 11:00（开始时间提前，与 prevPiece 重叠）
-                //   → prevPiece.timePoint 需要调整为 09:30
-                //
-                // 场景2: 把 piece 改成 10:00 → 11:30（结束时间延后，与 nextPiece 重叠）
-                //   → nextPiece.fromTimePoint 需要调整为 11:30
-                //
-                // 场景3: 把 piece 改成 10:30 → 10:45（缩短，不重叠）
-                //   → 不调整相邻记录（会产生时间空隙，这是用户主动选择的）
+                // 如果把 D 的开始时间从 10:00 改成 08:30：
+                // - A 的结束时间改为 08:30（被部分覆盖）
+                // - B 被完全覆盖，删除
+                // - C 被完全覆盖，删除
+                // - D 变成 08:30 → 11:00
                 
-                // 1. 检查是否与前一条记录重叠（当前开始时间 < 前一条结束时间）
-                if (prevPiece != null && updated.fromTimePoint < prevPiece.timePoint) {
-                    // 当前记录的开始时间侵入了前一条记录的范围，需要调整前一条的结束时间
-                    val adjustedPrev = prevPiece.copy(timePoint = updated.fromTimePoint)
-                    viewModel.updateTimePiece(adjustedPrev)
+                // 1. 处理开始时间提前的情况（影响之前的记录）
+                // 列表是倒序的，pieceIndex 之后的元素是时间更早的记录
+                if (updated.fromTimePoint < piece.fromTimePoint) {
+                    // 遍历所有更早的记录
+                    for (i in (pieceIndex + 1) until timePieces.size) {
+                        val earlierPiece = timePieces[i]
+                        
+                        if (earlierPiece.timePoint <= updated.fromTimePoint) {
+                            // 这条记录在新开始时间之前结束，不受影响，后面的更不会受影响
+                            break
+                        } else if (earlierPiece.fromTimePoint >= updated.fromTimePoint) {
+                            // 这条记录被完全覆盖，删除
+                            viewModel.deleteTimePiece(earlierPiece)
+                        } else {
+                            // 这条记录被部分覆盖，调整其结束时间
+                            val adjusted = earlierPiece.copy(timePoint = updated.fromTimePoint)
+                            viewModel.updateTimePiece(adjusted)
+                            break  // 再往前的记录不会受影响了
+                        }
+                    }
                 }
                 
-                // 2. 检查是否与后一条记录重叠（当前结束时间 > 后一条开始时间）
-                if (nextPiece != null && updated.timePoint > nextPiece.fromTimePoint) {
-                    // 当前记录的结束时间侵入了后一条记录的范围，需要调整后一条的开始时间
-                    val adjustedNext = nextPiece.copy(fromTimePoint = updated.timePoint)
-                    viewModel.updateTimePiece(adjustedNext)
+                // 2. 处理结束时间延后的情况（影响之后的记录）
+                // 列表是倒序的，pieceIndex 之前的元素是时间更晚的记录
+                if (updated.timePoint > piece.timePoint) {
+                    // 遍历所有更晚的记录
+                    for (i in (pieceIndex - 1) downTo 0) {
+                        val laterPiece = timePieces[i]
+                        
+                        if (laterPiece.fromTimePoint >= updated.timePoint) {
+                            // 这条记录在新结束时间之后开始，不受影响，后面的更不会受影响
+                            break
+                        } else if (laterPiece.timePoint <= updated.timePoint) {
+                            // 这条记录被完全覆盖，删除
+                            viewModel.deleteTimePiece(laterPiece)
+                        } else {
+                            // 这条记录被部分覆盖，调整其开始时间
+                            val adjusted = laterPiece.copy(fromTimePoint = updated.timePoint)
+                            viewModel.updateTimePiece(adjusted)
+                            break  // 再往后的记录不会受影响了
+                        }
+                    }
                 }
                 
                 // 3. 保存当前记录
