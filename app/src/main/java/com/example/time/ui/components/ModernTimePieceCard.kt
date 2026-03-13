@@ -43,17 +43,6 @@ fun ModernTimePieceCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    // 动画状态
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-    
     // 根据情绪评分选择渐变色
     val gradientBrush = when (timePiece.emotion) {
         5 -> ModernColors.GradientPurple
@@ -81,10 +70,13 @@ fun ModernTimePieceCard(
                 shape = RoundedCornerShape(ModernSizes.CornerLarge.dp),
                 spotColor = ModernColors.Primary.copy(alpha = 0.1f)
             )
-            .clickable(enabled = onClick != null) {
-                isPressed = true
-                onClick?.invoke()
-            },
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(ModernSizes.CornerLarge.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -218,13 +210,6 @@ fun ModernTimePieceCard(
                     )
                 }
             }
-        }
-    }
-    
-    LaunchedEffect(isPressed) {
-        if (isPressed) {
-            kotlinx.coroutines.delay(100)
-            isPressed = false
         }
     }
 }
