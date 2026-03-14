@@ -2,11 +2,9 @@ package com.example.time.ui.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -16,16 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.theme.EmotionColors
-import java.time.Duration
 import kotlin.math.roundToInt
 
 /**
@@ -200,7 +194,7 @@ fun SimpleEmotionCard(emotionStat: EmotionStat, totalCount: Int) {
                 Icon(
                     Icons.Default.Star,
                     contentDescription = null,
-                    tint = EmotionColors.getEmotionColor(emotionStat.emotion),
+                    tint = EmotionColors.getColorForStar(emotionStat.emotion),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -245,15 +239,11 @@ fun calculateTimeStats(timePieces: List<TimePiece>): TimeStatsData {
     var totalMinutes = 0
     
     timePieces.forEach { piece ->
-        val minutes = try {
-            Duration.between(piece.startTime, piece.endTime).toMinutes().toInt()
-        } catch (e: Exception) {
-            0
-        }
+        val minutes = ((piece.timePoint - piece.fromTimePoint) / (1000 * 60)).toInt()
         
         if (minutes > 0) {
             totalMinutes += minutes
-            eventMap.getOrPut(piece.event) { mutableListOf() }.add(minutes)
+            eventMap.getOrPut(piece.mainEvent) { mutableListOf() }.add(minutes)
         }
     }
     
