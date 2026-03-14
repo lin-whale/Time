@@ -1,0 +1,563 @@
+package com.example.time.ui.screens
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.time.logic.model.TimePiece
+import com.example.time.ui.TimeViewModel
+import com.example.time.ui.theme.EmotionColors
+import java.time.Duration
+import kotlin.math.roundToInt
+
+/**
+ * 现代化统计界面 - 时间统计
+ */
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModernTimeStatsScreen(
+    viewModel: TimeViewModel,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val timePieces by viewModel.timePieces.observeAsState(listOf())
+    
+    // 统计数据
+    val statsData = remember(timePieces) {
+        calculateTimeStats(timePieces)
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("时间统计") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 总览卡片
+            item {
+                TimeOverviewCard(statsData)
+            }
+            
+            // 事件时长排行
+            item {
+                Text(
+                    text = "事件时长排行",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(statsData.eventStats) { eventStat ->
+                EventTimeCard(eventStat, statsData.totalMinutes)
+            }
+            
+            // 空状态
+            if (statsData.eventStats.isEmpty()) {
+                item {
+                    EmptyStateCard("暂无时间记录")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 现代化统计界面 - 心情统计
+ */
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModernFeelingStatsScreen(
+    viewModel: TimeViewModel,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val timePieces by viewModel.timePieces.observeAsState(listOf())
+    
+    // 统计数据
+    val feelingData = remember(timePieces) {
+        calculateFeelingStats(timePieces)
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("心情统计") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 心情总览
+            item {
+                FeelingOverviewCard(feelingData)
+            }
+            
+            // 心情分布
+            item {
+                Text(
+                    text = "心情分布",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(feelingData.emotionStats) { emotionStat ->
+                EmotionDistributionCard(emotionStat, feelingData.totalCount)
+            }
+            
+            // 空状态
+            if (feelingData.emotionStats.isEmpty()) {
+                item {
+                    EmptyStateCard("暂无心情记录")
+                }
+            }
+        }
+    }
+}
+
+// ============ 时间统计相关组件 ============
+
+@Composable
+fun TimeOverviewCard(stats: TimeStatsData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "总览",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                StatItem(
+                    label = "总时长",
+                    value = "${stats.totalMinutes / 60}h ${stats.totalMinutes % 60}m",
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                StatItem(
+                    label = "事件数",
+                    value = "${stats.eventCount}",
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                
+                StatItem(
+                    label = "平均时长",
+                    value = "${stats.averageMinutes}分钟",
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EventTimeCard(eventStat: EventTimeStat, totalMinutes: Int) {
+    val percentage = if (totalMinutes > 0) {
+        (eventStat.minutes.toFloat() / totalMinutes * 100).roundToInt()
+    } else 0
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = eventStat.eventName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${eventStat.minutes / 60}h ${eventStat.minutes % 60}m | $percentage%",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                </Column>
+                
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${eventStat.count}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // 进度条
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(percentage / 100f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        )
+                )
+            }
+        }
+    }
+}
+
+// ============ 心情统计相关组件 ============
+
+@Composable
+fun FeelingOverviewCard(stats: FeelingStatsData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "心情总览",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                StatItem(
+                    label = "记录数",
+                    value = "${stats.totalCount}",
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                
+                StatItem(
+                    label = "平均心情",
+                    value = String.format("%.1f", stats.averageEmotion),
+                    color = EmotionColors.getEmotionColor(stats.averageEmotion.roundToInt())
+                )
+                
+                StatItem(
+                    label = "最常心情",
+                    value = "${stats.mostFrequentEmotion}星",
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmotionDistributionCard(emotionStat: EmotionStat, totalCount: Int) {
+    val percentage = if (totalCount > 0) {
+        (emotionStat.count.toFloat() / totalCount * 100).roundToInt()
+    } else 0
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // 星星评分
+                    repeat(emotionStat.emotion) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = EmotionColors.getEmotionColor(emotionStat.emotion),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "${emotionStat.emotion}星",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Text(
+                    text = "${emotionStat.count}次 | $percentage%",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // 进度条
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(percentage / 100f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(EmotionColors.getEmotionColor(emotionStat.emotion))
+                )
+            }
+        }
+    }
+}
+
+// ============ 通用组件 ============
+
+@Composable
+fun StatItem(label: String, value: String, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun EmptyStateCard(message: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = message,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// ============ 数据类和计算函数 ============
+
+data class TimeStatsData(
+    val totalMinutes: Int,
+    val eventCount: Int,
+    val averageMinutes: Int,
+    val eventStats: List<EventTimeStat>
+)
+
+data class EventTimeStat(
+    val eventName: String,
+    val minutes: Int,
+    val count: Int
+)
+
+data class FeelingStatsData(
+    val totalCount: Int,
+    val averageEmotion: Float,
+    val mostFrequentEmotion: Int,
+    val emotionStats: List<EmotionStat>
+)
+
+data class EmotionStat(
+    val emotion: Int,
+    val count: Int
+)
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun calculateTimeStats(timePieces: List<TimePiece>): TimeStatsData {
+    if (timePieces.isEmpty()) {
+        return TimeStatsData(0, 0, 0, emptyList())
+    }
+    
+    val eventMap = mutableMapOf<String, MutableList<Int>>()
+    var totalMinutes = 0
+    
+    timePieces.forEach { piece ->
+        val minutes = try {
+            Duration.between(piece.startTime, piece.endTime).toMinutes().toInt()
+        } catch (e: Exception) {
+            0
+        }
+        
+        if (minutes > 0) {
+            totalMinutes += minutes
+            eventMap.getOrPut(piece.event) { mutableListOf() }.add(minutes)
+        }
+    }
+    
+    val eventStats = eventMap.map { (event, minutes) ->
+        EventTimeStat(
+            eventName = event,
+            minutes = minutes.sum(),
+            count = minutes.size
+        )
+    }.sortedByDescending { it.minutes }
+    
+    val averageMinutes = if (eventStats.isNotEmpty()) {
+        totalMinutes / timePieces.size
+    } else 0
+    
+    return TimeStatsData(
+        totalMinutes = totalMinutes,
+        eventCount = eventStats.size,
+        averageMinutes = averageMinutes,
+        eventStats = eventStats
+    )
+}
+
+fun calculateFeelingStats(timePieces: List<TimePiece>): FeelingStatsData {
+    if (timePieces.isEmpty()) {
+        return FeelingStatsData(0, 0f, 0, emptyList())
+    }
+    
+    val emotionMap = mutableMapOf<Int, Int>()
+    var totalEmotion = 0
+    
+    timePieces.forEach { piece ->
+        val emotion = piece.emotion
+        emotionMap[emotion] = emotionMap.getOrDefault(emotion, 0) + 1
+        totalEmotion += emotion
+    }
+    
+    val emotionStats = emotionMap.map { (emotion, count) ->
+        EmotionStat(emotion, count)
+    }.sortedByDescending { it.count }
+    
+    val averageEmotion = totalEmotion.toFloat() / timePieces.size
+    val mostFrequent = emotionStats.firstOrNull()?.emotion ?: 0
+    
+    return FeelingStatsData(
+        totalCount = timePieces.size,
+        averageEmotion = averageEmotion,
+        mostFrequentEmotion = mostFrequent,
+        emotionStats = emotionStats
+    )
+}
