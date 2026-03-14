@@ -1,16 +1,11 @@
 package com.example.time.ui.timeRecord
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,14 +28,10 @@ fun TimePickerDialog(
     onTimeSelected: (Long) -> Unit, 
     onCancel: () -> Unit
 ) {
-    // 直接使用参数，不用 remember 缓存
     val minTime = latestTime
     val upperBound = maxTime
-    
-    // 计算时间范围
     val timeRange = upperBound - minTime
     
-    // 计算初始时间：使用传入的 initialTime（需约束在范围内），否则默认中间值
     val effectiveInitialTime = when {
         initialTime != null && initialTime in minTime..upperBound -> initialTime
         initialTime != null && initialTime < minTime -> minTime
@@ -48,7 +39,6 @@ fun TimePickerDialog(
         else -> (minTime + upperBound) / 2
     }
     
-    // 计算初始 ratio（0~1000）
     val initialRatio = if (timeRange > 0) {
         ((effectiveInitialTime - minTime).toFloat() / timeRange * 1000f).coerceIn(0f, 1000f)
     } else {
@@ -61,12 +51,78 @@ fun TimePickerDialog(
     var ratio by remember(minTime, upperBound, initialTime) { 
         mutableStateOf(initialRatio) 
     }
+    
+    // 调整时间的辅助函数
+    fun adjustTime(minutesDelta: Int) {
+        val newTime = selectedTime + minutesDelta * 60 * 1000L
+        if (newTime in minTime..upperBound) {
+            selectedTime = newTime
+            ratio = ((newTime - minTime).toFloat() / timeRange * 1000f).coerceIn(0f, 1000f)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = { },
         title = { Text(text = "选择时间") },
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 时间显示区域（放在顶部，增加与滑块的间距）
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val selectedStr = convertTimeFormat(selectedTime, "MM/dd HH:mm")
+                    Text(
+                        text = selectedStr,
+                        fontSize = 24.sp,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val minTimeStr = convertTimeFormat(minTime, "MM/dd HH:mm")
+                    val maxTimeStr = convertTimeFormat(upperBound, "MM/dd HH:mm")
+                    Text(
+                        text = "范围: $minTimeStr ~ $maxTimeStr",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // 增加间距，防止手指遮挡
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // ±5分钟按钮
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    OutlinedButton(
+                        onClick = { adjustTime(-5) },
+                        enabled = timeRange > 0 && selectedTime - 5 * 60 * 1000L >= minTime,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("-5分钟")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    OutlinedButton(
+                        onClick = { adjustTime(5) },
+                        enabled = timeRange > 0 && selectedTime + 5 * 60 * 1000L <= upperBound,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("+5分钟")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 滑动条区域
                 if (timeRange > 0) {
                     Slider(
                         value = ratio,
@@ -76,21 +132,17 @@ fun TimePickerDialog(
                         },
                         valueRange = 0f..1000f,
                         steps = 1000,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                     )
                 } else {
                     Text(
                         text = "⚠️ 时间范围为零，无法调整",
-                        color = androidx.compose.ui.graphics.Color.Red
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
-                
-                val minTimeStr = convertTimeFormat(minTime, "MM/dd HH:mm")
-                val maxTimeStr = convertTimeFormat(upperBound, "MM/dd HH:mm")
-                val selectedStr = convertTimeFormat(selectedTime, "MM/dd HH:mm")
-                
-                Text(text = "范围: $minTimeStr ~ $maxTimeStr", fontSize = 12.sp)
-                Text(text = "选择: $selectedStr", fontSize = 16.sp)
             }
         },
         confirmButton = {
