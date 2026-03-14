@@ -7,20 +7,13 @@ import androidx.activity.viewModels
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import com.example.time.LifePieceApplication
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.TimeViewModelFactory
-import com.example.time.ui.showTimePieces.DatePeriodPicker
-import com.example.time.ui.showTimePieces.WhereTimeFly
+import com.example.time.ui.screens.ModernTimeStatsScreen
 import com.example.tiptime.ui.theme.TimeTheme
 
 class ShowTimeActivity : ComponentActivity() {
@@ -34,28 +27,14 @@ class ShowTimeActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            Box(Modifier.safeDrawingPadding()) {
-                showTime(viewModel = lifePieceViewModel)
+            TimeTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    ModernTimeStatsScreen(
+                        viewModel = lifePieceViewModel,
+                        onBackClick = { finish() }
+                    )
+                }
             }
-//            TimeTheme {
-//                Box(Modifier.safeDrawingPadding()){
-//                    Surface(
-//                        modifier = Modifier.fillMaxSize(),
-//                    ) {
-//                        showTime(viewModel = lifePieceViewModel)
-//                    }
-//                }
-//            }
         }
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun showTime(viewModel: TimeViewModel){
-    val timePieces by viewModel.timePieces.observeAsState(listOf())
-    Column {
-        DatePeriodPicker(viewModel = viewModel)
-        WhereTimeFly(timePieces = timePieces)
     }
 }
