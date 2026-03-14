@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.theme.EmotionColors
+import com.example.time.ui.showTimePieces.DatePeriodPicker
 import kotlin.math.roundToInt
 
 /**
@@ -50,27 +51,36 @@ fun ModernTimeStatsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                TimeOverviewCard(statsData.totalMinutes, statsData.eventCount)
-            }
+            // 时间区间选择器
+            DatePeriodPicker(viewModel = viewModel)
             
-            item {
-                Text(
-                    text = "事件时长排行",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            items(statsData.eventStats) { eventStat ->
-                SimpleEventCard(eventStat, statsData.totalMinutes)
+            // 统计内容
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    TimeOverviewCard(statsData.totalMinutes, statsData.eventCount)
+                }
+                
+                item {
+                    Text(
+                        text = "事件时长排行",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                items(statsData.eventStats) { eventStat ->
+                    SimpleEventCard(eventStat, statsData.totalMinutes)
+                }
             }
         }
     }
@@ -104,27 +114,36 @@ fun ModernFeelingStatsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                FeelingOverviewCard(feelingData.totalCount, feelingData.averageEmotion)
-            }
+            // 时间区间选择器
+            DatePeriodPicker(viewModel = viewModel)
             
-            item {
-                Text(
-                    text = "心情分布",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            items(feelingData.emotionStats) { emotionStat ->
-                SimpleEmotionCard(emotionStat, feelingData.totalCount)
+            // 统计内容
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    FeelingOverviewCard(feelingData.totalCount, feelingData.averageEmotion)
+                }
+                
+                item {
+                    Text(
+                        text = "心情分布",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                items(feelingData.emotionStats) { emotionStat ->
+                    SimpleEmotionCard(emotionStat, feelingData.totalCount)
+                }
             }
         }
     }
