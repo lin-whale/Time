@@ -122,6 +122,11 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     var showSubmitConfirm by remember { mutableStateOf(false) }
     var pendingTimePiece by remember { mutableStateOf<TimePiece?>(null) }
     
+    // Activity launchers
+    val themeActivityLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { /* 不需要处理返回结果 */ }
+    
     Column(
         modifier = Modifier
             .statusBarsPadding()
@@ -370,6 +375,17 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 if (isMDOpen) {
                     IntroductionDialog { isMDOpen = false }
                 }
+                
+                // 主题设置
+                val context = LocalContext.current
+                IconTextButton(
+                    icon = "🎨",
+                    text = "主题",
+                    onClick = {
+                        val intent = Intent(context, com.example.time.ui.activity.ThemeSelectionActivity::class.java)
+                        themeActivityLauncher.launch(intent)
+                    }
+                )
                 
                 // 记录列表
                 ButtonToShowTimePiecesActivity()
