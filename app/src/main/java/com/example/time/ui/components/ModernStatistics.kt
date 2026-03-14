@@ -16,10 +16,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -113,14 +111,14 @@ fun TodayOverviewCard(
                     StatItem(
                         label = "总时长",
                         value = "${totalMinutes / 60}h ${totalMinutes % 60}m",
-                        icon = Icons.Filled.AccessTime,
+                        icon = Icons.Filled.Star,
                         color = ModernColors.Info
                     )
                     
                     StatItem(
                         label = "事件数",
                         value = "$eventCount",
-                        icon = Icons.Filled.CalendarMonth,
+                        icon = Icons.Filled.Star,
                         color = ModernColors.Success
                     )
                     
