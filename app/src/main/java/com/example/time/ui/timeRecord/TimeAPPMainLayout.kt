@@ -386,16 +386,16 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                 // 设置按钮
                 ButtonToShowSettingsActivity()
                 
-                // 主题设置
-                val context = LocalContext.current
-                IconTextButton(
-                    icon = "🎨",
-                    text = "主题",
-                    onClick = {
-                        val intent = Intent(context, com.example.time.ui.activity.ThemeSelectionActivity::class.java)
-                        themeActivityLauncher.launch(intent)
-                    }
-                )
+                // 主题设置按钮已隐藏（设置界面中已有主题选择功能）
+                // val context = LocalContext.current
+                // IconTextButton(
+                //     icon = "🎨",
+                //     text = "主题",
+                //     onClick = {
+                //         val intent = Intent(context, com.example.time.ui.activity.ThemeSelectionActivity::class.java)
+                //         themeActivityLauncher.launch(intent)
+                //     }
+                // )
                 
                 // 记录列表
                 ButtonToShowTimePiecesActivity()

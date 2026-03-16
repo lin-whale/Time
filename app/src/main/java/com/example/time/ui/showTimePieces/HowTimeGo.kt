@@ -1,182 +1,552 @@
-/**
- * HowTimeGo - 情绪分布饼图
- * 
- * 改动说明：
- * - 修复除零错误：当没有记录或总时长为0时，添加保护逻辑
- * - 优化图表显示：空数据时显示友好提示
- * - 使用新的情绪颜色方案
- * 
- * Bug修复说明：
- * - 问题：开始使用时没有记录，计算百分比时 totalSum 为 0 导致除零错误
- * - 解决：在分母中添加保护值，并在空数据时显示提示信息
- */
 package com.example.time.ui.showTimePieces
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.time.logic.model.TimePiece
-import com.example.time.ui.theme.EmotionColors
-import com.example.time.ui.utils.getRandomColor
-import kotlin.math.cos
-import kotlin.math.sin
+import androidx.compose.ui.platform.LocalContext
+import com.example.time.R
+import com.example.time.data.TimePiece
+import com.example.time.ui.theme.ChartColors
+import java.util.*
+import kotlin.math.min
 
 /**
- * 情绪分布饼图组件
- * 显示不同心情评分的时间占比
- * 
- * @param timePieces 时间片段列表
+ * 心情分布统计界面 - 现代化设计版本
+ * 展示不同心情等级的时间分布
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HowTimeGo(timePieces: List<TimePiece>) {
-    // ===== 空数据保护 =====
-    // 修复：当没有记录时显示友好提示，避免后续计算出错
-    if (timePieces.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .size(height = 300.dp, width = 400.dp)
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+fun HowTimeGo(
+    timePieces: List<TimePiece>,
+    onFeelingClick: (Int) -> Unit,
+    onBackPressed: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    // 计算各心情等级的时间分布
+    val feelingDurations = remember(timePieces) {
+        timePieces
+            .filter { it.endTime != null && it.feeling > 0 }
+            .groupBy { it.feeling }
+            .mapValues { (_, pieces) ->
+                pieces.sumOf { piece ->
+                    (piece.endTime?.time ?: 0L) - piece.startTime.time
+                }
+            }
+            .filter { it.value > 0 }
+            .toList()
+            .sortedByDescending { it.second }
+    }
+
+    val totalDuration = feelingDurations.sumOf { it.second }
+    
+    // 动画状态
+    var animationProgress by remember { mutableStateOf(0f) }
+    val animatedProgress by animateFloatAsState(
+        targetValue = animationProgress,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "chartAnimation"
+    )
+
+    LaunchedEffect(Unit) {
+        animationProgress = 1f
+    }
+
+    // 心情等级对应的颜色（从差到好）
+    val feelingColors = remember {
+        listOf(
+            Color(android.graphics.Color.parseColor("#FF6B6B")), // 😞 很差 - 红色
+            Color(android.graphics.Color.parseColor("#FF9F43")), // 😕 较差 - 橙色
+            Color(android.graphics.Color.parseColor("#FECA57")), // 😐 一般 - 黄色
+            Color(android.graphics.Color.parseColor("#1DD1A1")), // 😊 较好 - 青绿
+            Color(android.graphics.Color.parseColor("#10AC84"))  // 😄 很好 - 翠绿
+        )
+    }
+
+    // 心情等级对应的表情
+    val feelingEmojis = listOf("😞", "😕", "😐", "😊", "😄")
+    val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "心情分布",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    elevation = 0.dp
+                )
+            )
+        }
+    ) { padding ->
+        if (feelingDurations.isEmpty()) {
+            // 空状态
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "🎭",
+                        fontSize = 64.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = "暂无心情数据",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "给时间片添加心情后就能看到分布啦",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, bottom = 80.dp)
+            ) {
+                // 心情概览卡片
+                item {
+                    FeelingOverviewCard(
+                        totalDuration = totalDuration,
+                        itemCount = timePieces.count { it.feeling > 0 },
+                        avgFeeling = if (feelingDurations.isNotEmpty()) {
+                            val totalFeelingScore = timePieces
+                                .filter { it.feeling > 0 && it.endTime != null }
+                                .sumOf { it.feeling.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                            (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
+                        } else 3f,
+                        feelingEmojis = feelingEmojis
+                    )
+                }
+                
+                // 饼图区域
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.1f),
+                                spotColor = Color.Black.copy(alpha = 0.1f)
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "心情分布",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                            
+                            // 饼图
+                            Box(
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ModernFeelingPieChart(
+                                    data = feelingDurations,
+                                    colors = feelingColors,
+                                    totalDuration = totalDuration,
+                                    progress = animatedProgress
+                                )
+                                
+                                // 中心显示平均心情
+                                val avgFeeling = if (feelingDurations.isNotEmpty()) {
+                                    val totalFeelingScore = timePieces
+                                        .filter { it.feeling > 0 && it.endTime != null }
+                                        .sumOf { it.feeling.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                                    (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
+                                } else 3f
+                                
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = feelingEmojis[(avgFeeling - 1).toInt().coerceIn(0, 4)],
+                                        fontSize = 32.sp
+                                    )
+                                    Text(
+                                        text = String.format("%.1f", avgFeeling),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = feelingColors[(avgFeeling - 1).toInt().coerceIn(0, 4)]
+                                    )
+                                }
+                            }
+                            
+                            // 心情图例（修复使用FlowRow）
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                feelingDurations.forEach { (feeling, duration) ->
+                                    val percentage = if (totalDuration > 0) 
+                                        (duration.toFloat() / totalDuration * 100).toInt() else 0
+                                    FeelingLegendItem(
+                                        emoji = feelingEmojis[feeling - 1],
+                                        feeling = feeling,
+                                        duration = duration,
+                                        percentage = percentage,
+                                        color = feelingColors[feeling - 1]
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 详细列表标题
+                item {
+                    Text(
+                        text = "心情详情",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 4.dp)
+                    )
+                }
+                
+                // 心情等级卡片列表
+                items(feelingDurations) { (feeling, duration) ->
+                    val percentage = if (totalDuration > 0) 
+                        duration.toFloat() / totalDuration else 0f
+                    
+                    FeelingDurationCard(
+                        feeling = feeling,
+                        emoji = feelingEmojis[feeling - 1],
+                        label = feelingLabels[feeling - 1],
+                        duration = duration,
+                        percentage = percentage,
+                        color = feelingColors[feeling - 1],
+                        onClick = { onFeelingClick(feeling) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeelingOverviewCard(
+    totalDuration: Long,
+    itemCount: Int,
+    avgFeeling: Float,
+    feelingEmojis: List<String>
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 平均心情
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "💭",
-                    fontSize = 48.sp
+                    text = feelingEmojis[(avgFeeling - 1).toInt().coerceIn(0, 4)],
+                    fontSize = 28.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "暂无心情数据",
-                    fontSize = 18.sp,
-                    color = Color.Gray
+                    text = "平均",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            )
+            
+            // 总时长
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "选择的时间范围内没有记录\n请先添加一些时间记录",
-                    fontSize = 14.sp,
-                    color = Color.Gray.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
+                    text = formatDurationShort(totalDuration),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "总时长",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            )
+            
+            // 时间片数量
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "$itemCount",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "心情片",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        return
     }
-    
-    // Step 1: 计算每种情绪评分的时间长度总和
-    val timeSumsByEmotion = timePieces
-        .groupBy { it.emotion }
-        .mapValues { entry ->
-            entry.value.sumOf { it.timePoint - it.fromTimePoint }
-        }
-        .toList()
-        .sortedBy { it.first }
-        .toMap()
+}
 
-    // Step 2: 创建颜色映射（使用情绪专属配色）
-    val colorMap = mutableMapOf<Int, Color>()
-    timeSumsByEmotion.keys.forEach { emotion ->
-        // 使用预定义的情绪颜色
-        colorMap[emotion] = EmotionColors.getColorForStar(emotion)
-    }
-
-    // Step 3: 绘制扇形图、标签和指向线
-    // 辅助函数：计算文本标签的位置
-    fun calculateLabelPosition(center: Offset, angle: Float, distance: Float): Offset {
-        val labelOffsetX = center.x + distance * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val labelOffsetY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(labelOffsetX, labelOffsetY)
-    }
-
-    // 辅助函数：计算折线的起始点位置
-    fun calculateLineStart(center: Offset, angle: Float, radius: Float): Offset {
-        val lineStartX = center.x + radius * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val lineStartY = center.y + radius * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(lineStartX, lineStartY)
-    }
-
-    // 辅助函数：计算折线的结束点位置
-    fun calculateLineEnd(center: Offset, angle: Float, distance: Float): Offset {
-        val lineEndX = center.x + distance * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val lineEndY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(lineEndX, lineEndY)
-    }
-    
-    Canvas(modifier = Modifier.size(height = 300.dp, width = 400.dp)) {
-        val diameter = size.minDimension
-        val radius = diameter / 3f
-        val center = Offset(size.width / 2, size.height / 2)
-        
-        // ===== 关键修复：除零保护 =====
-        // 计算总和，如果为0则使用1作为保护值
-        val totalSum = timeSumsByEmotion.values.sum()
-        // 使用 coerceAtLeast(1) 确保分母不为0
-        val safeTotalSum = totalSum.coerceAtLeast(1L)
-        
+@Composable
+private fun ModernFeelingPieChart(
+    data: List<Pair<Int, Long>>,
+    colors: List<Color>,
+    totalDuration: Long,
+    progress: Float
+) {
+    Canvas(
+        modifier = Modifier.fillMaxSize()
+    ) {
         var startAngle = -90f
-
-        timeSumsByEmotion.forEach { (emotion, sum) ->
-            // 使用安全的除法，避免除零错误
-            val sweepAngle = (sum.toFloat() / safeTotalSum.toFloat()) * 360f
-            val labelAngle = startAngle + sweepAngle / 2
-            val labelOffset = calculateLabelPosition(center, labelAngle, radius + 60f)
-            val lineStart = calculateLineStart(center, labelAngle, radius)
-            val lineEnd = calculateLineEnd(center, labelAngle, radius + 30f)
-
-            // 绘制扇形块
-            colorMap[emotion]?.let {
-                drawArc(
-                    color = it,
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = true,
-                    topLeft = center - Offset(radius, radius),
-                    size = Size(radius * 2, radius * 2)
-                )
-            }
-
-            // 绘制文本标签（用星星表示情绪等级）
-            if (sweepAngle > 10f) {
-                drawContext.canvas.nativeCanvas.drawText(
-                    "⭐".repeat(emotion),
-                    labelOffset.x,
-                    labelOffset.y,
-                    labelPaint
-                )
-            }
-
-            startAngle += sweepAngle
+        
+        data.forEach { (feeling, duration) ->
+            val sweep = if (totalDuration > 0) 
+                (duration.toFloat() / totalDuration * 360f) else 0f
+            
+            val animatedSweep = sweep * progress
+            val color = colors[feeling - 1]
+            
+            // 绘制扇形
+            drawArc(
+                color = color,
+                startAngle = startAngle,
+                sweepAngle = animatedSweep,
+                useCenter = true,
+                size = size
+            )
+            
+            startAngle += animatedSweep
         }
-
-        // 绘制中间的圆形（使饼图变为环形图，更美观）
-        val innerCircleRadius = radius / 2
+        
+        // 中心空白圆（甜甜圈效果）
         drawCircle(
-            color = Color.White,
-            center = center,
-            radius = innerCircleRadius
+            color = android.graphics.Color.WHITE,
+            radius = size.minDimension / 4f,
+            center = center
         )
     }
 }
 
-// 标签画笔配置
-private val labelPaint = android.graphics.Paint().apply {
-    isAntiAlias = true
-    textSize = 30f
-    color = android.graphics.Color.BLACK
-    textAlign = android.graphics.Paint.Align.CENTER
+@Composable
+private fun FeelingLegendItem(
+    emoji: String,
+    feeling: Int,
+    duration: Long,
+    percentage: Int,
+    color: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(
+                color.copy(alpha = 0.1f),
+                RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(text = emoji, fontSize = 14.sp)
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "$percentage%",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = color
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FeelingDurationCard(
+    feeling: Int,
+    emoji: String,
+    label: String,
+    duration: Long,
+    percentage: Float,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 表情符号（加大）
+            Text(
+                text = emoji,
+                fontSize = 28.sp,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            
+            // 心情标签
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // 进度条
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(6.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(3.dp)
+                        )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(percentage)
+                            .background(color, RoundedCornerShape(3.dp))
+                    )
+                }
+            }
+            
+            // 时长和箭头
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatDurationShort(duration),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = "${(percentage * 100).toInt()}%",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+private fun formatDurationShort(durationMs: Long): String {
+    val hours = durationMs / (1000 * 60 * 60)
+    val minutes = (durationMs % (1000 * 60 * 60)) / (1000 * 60)
+    
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 -> "${hours}h"
+        minutes > 0 -> "${minutes}m"
+        else -> "0m"
+    }
 }

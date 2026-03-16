@@ -1,198 +1,548 @@
-/**
- * WhereTimeFly - 时间去向饼图
- * 
- * 改动说明：
- * - 修复除零错误：当没有记录或总时长为0时，添加保护逻辑
- * - 优化图表显示：空数据时显示友好提示
- * - 使用新的配色方案
- * 
- * Bug修复说明：
- * - 问题：开始使用时没有记录，计算百分比时 totalSum 为 0 导致除零错误
- * - 解决：在分母中添加保护值，并在空数据时显示提示信息
- */
 package com.example.time.ui.showTimePieces
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.time.logic.model.TimePiece
-import com.example.time.logic.utils.convertDurationFormat
+import com.example.time.R
+import com.example.time.data.TimePiece
+import com.example.time.data.TimePieceType
 import com.example.time.ui.theme.ChartColors
-import com.example.time.ui.utils.ExpandableList
-import com.example.time.ui.utils.getRandomColor
-import kotlin.math.cos
-import kotlin.math.sin
+import com.example.time.viewmodel.TimePieceViewModel
+import java.util.Date
+import java.util.Calendar
+import kotlin.math.min
+import kotlin.math.max
+import kotlin.math.abs
+import kotlin.math.pow
 
 /**
- * 时间去向饼图组件
- * 显示各事件类型占用时间的比例分布
- * 
- * @param timePieces 时间片段列表
+ * 时间分布统计界面 - 现代化设计版本
+ * 使用优雅的卡片布局和微动画
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WhereTimeFly(timePieces: List<TimePiece>) {
-    // ===== 空数据保护 =====
-    // 修复：当没有记录时显示友好提示，避免后续计算出错
-    if (timePieces.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .size(width = 400.dp, height = 300.dp)
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "📊",
-                    fontSize = 48.sp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "暂无数据",
-                    fontSize = 18.sp,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "选择的时间范围内没有记录\n请先添加一些时间记录",
-                    fontSize = 14.sp,
-                    color = Color.Gray.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
-                )
+fun WhereTimeFly(
+    timePieces: List<TimePiece>,
+    onTypeClick: (TimePieceType) -> Unit,
+    onBackPressed: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    // 计算各类型的时间分布
+    val typeDurations = remember(timePieces) {
+        timePieces
+            .filter { it.endTime != null && it.type != TimePieceType.UNKNOWN }
+            .groupBy { it.type }
+            .mapValues { (_, pieces) ->
+                pieces.sumOf { piece ->
+                    (piece.endTime?.time ?: 0L) - piece.startTime.time
+                }
             }
-        }
-        return
+            .filter { it.value > 0 }
+            .toList()
+            .sortedByDescending { it.second }
     }
     
-    // Step 1: 计算每种mainEvent的时间长度总和
-    val timeSumsByMainEvent = timePieces
-        .groupBy { it.mainEvent }
-        .mapValues { entry ->
-            entry.value.sumOf { it.timePoint - it.fromTimePoint }
-        }
-        .toList()
-        .sortedByDescending { it.second }
-        .toMap()
-
-    // Step 2: 创建颜色映射（使用新的配色方案）
-    val colorMap = mutableMapOf<String, Color>()
-    timeSumsByMainEvent.keys.forEachIndexed { index, mainEvent ->
-        // 使用预定义的图表配色，更美观且易区分
-        colorMap[mainEvent] = ChartColors.getColor(index)
-    }
-
-    // Step 3: 绘制扇形图
-    // 辅助函数：计算文本标签的位置
-    fun calculateLabelPosition(center: Offset, angle: Float, distance: Float): Offset {
-        val labelOffsetX = center.x + distance * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val labelOffsetY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(labelOffsetX, labelOffsetY)
-    }
-
-    // 辅助函数：计算折线的起始点位置
-    fun calculateLineStart(center: Offset, angle: Float, radius: Float): Offset {
-        val lineStartX = center.x + radius * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val lineStartY = center.y + radius * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(lineStartX, lineStartY)
-    }
-
-    // 辅助函数：计算折线的结束点位置
-    fun calculateLineEnd(center: Offset, angle: Float, distance: Float): Offset {
-        val lineEndX = center.x + distance * cos(Math.toRadians(angle.toDouble())).toFloat()
-        val lineEndY = center.y + distance * sin(Math.toRadians(angle.toDouble())).toFloat()
-        return Offset(lineEndX, lineEndY)
+    val totalDuration = typeDurations.sumOf { it.second }
+    
+    // 动画控制器
+    var animationProgress by remember { mutableStateOf(0f) }
+    val animatedProgress by animateFloatAsState(
+        targetValue = animationProgress,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "chartAnimation"
+    )
+    
+    LaunchedEffect(Unit) {
+        animationProgress = 1f
     }
     
-    Canvas(
-        modifier = Modifier
-            .size(width = 400.dp, height = 300.dp)
-    ) {
-        val diameter = size.minDimension
-        val radius = diameter / 3f
-        val center = Offset(size.width / 2, size.height / 2)
-        
-        // ===== 关键修复：除零保护 =====
-        // 计算总和，如果为0则使用1作为保护值
-        val totalSum = timeSumsByMainEvent.values.sum()
-        // 使用 coerceAtLeast(1) 确保分母不为0
-        val safeTotalSum = totalSum.coerceAtLeast(1L)
-        
-        var startAngle = -90f
-
-        timeSumsByMainEvent.forEach { (mainEvent, sum) ->
-            // 使用安全的除法，避免除零错误
-            val sweepAngle = (sum.toFloat() / safeTotalSum.toFloat()) * 360f
-            val labelAngle = startAngle + sweepAngle / 2
-            val labelOffset = calculateLabelPosition(center, labelAngle, radius + 60f)
-            val lineStart = calculateLineStart(center, labelAngle, radius)
-            val lineEnd = calculateLineEnd(center, labelAngle, radius + 30f)
-
-            // 绘制扇形块
-            colorMap[mainEvent]?.let {
-                drawArc(
-                    color = it,
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = true,
-                    topLeft = center - Offset(radius, radius),
-                    size = Size(radius * 2, radius * 2)
-                )
-            }
-
-            // 绘制文本标签（仅当扇形块足够大时显示）
-            if (sweepAngle > 15f) {
-                drawContext.canvas.nativeCanvas.drawText(
-                    mainEvent,
-                    labelOffset.x,
-                    labelOffset.y,
-                    labelPaint
-                )
-            }
-
-            startAngle += sweepAngle
-        }
-
-        // 绘制中间的圆形（使饼图变为环形图，更美观）
-        val innerCircleRadius = radius / 2
-        drawCircle(
-            color = Color.White,
-            center = center,
-            radius = innerCircleRadius
+    // 解析颜色
+    val chartColors = remember {
+        listOf(
+            Color(android.graphics.Color.parseColor("#FF6B6B")), // 珊瑚红
+            Color(android.graphics.Color.parseColor("#4ECDC4")), // 青绿
+            Color(android.graphics.Color.parseColor("#45B7D1")), // 天蓝
+            Color(android.graphics.Color.parseColor("#96CEB4")), // 薄荷绿
+            Color(android.graphics.Color.parseColor("#FFEAA7")), // 柠檬黄
+            Color(android.graphics.Color.parseColor("#DDA0DD")), // 梅红
+            Color(android.graphics.Color.parseColor("#98D8C8")), // 水绿
+            Color(android.graphics.Color.parseColor("#F7DC6F")), // 金黄
+            Color(android.graphics.Color.parseColor("#BB8FCE")), // 浅紫
+            Color(android.graphics.Color.parseColor("#85C1E9"))  // 浅蓝
         )
     }
 
-    // 显示可展开的详细列表
-    ExpandableList(timePieces, colorMap)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "时间分布",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    elevation = 0.dp
+                )
+            )
+        }
+    ) { padding ->
+        if (typeDurations.isEmpty()) {
+            // 空状态
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "📊",
+                        fontSize = 64.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = "暂无统计数据",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "记录一些时间片后就能看到分布啦",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, bottom = 80.dp)
+            ) {
+                // 总时间概览卡片
+                item {
+                    TimeOverviewCard(
+                        totalDuration = totalDuration,
+                        itemCount = timePieces.size,
+                        typeCount = typeDurations.size
+                    )
+                }
+                
+                // 饼图区域
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.1f),
+                                spotColor = Color.Black.copy(alpha = 0.1f)
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "时间分布",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            )
+                            
+                            // 饼图
+                            Box(
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                ModernPieChart(
+                                    data = typeDurations,
+                                    colors = chartColors,
+                                    totalDuration = totalDuration,
+                                    progress = animatedProgress
+                                )
+                            }
+                            
+                            // 图例
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                typeDurations.forEachIndexed { index, (type, duration) ->
+                                    val percentage = if (totalDuration > 0) 
+                                        (duration.toFloat() / totalDuration * 100).toInt() else 0
+                                    LegendItem(
+                                        color = chartColors[index % chartColors.size],
+                                        label = type.name ?: context.getString(type.nameResId),
+                                        duration = duration,
+                                        percentage = percentage
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 详细列表
+                item {
+                    Text(
+                        text = "类型详情",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 4.dp)
+                    )
+                }
+                
+                // 类型卡片列表
+                items(typeDurations) { (type, duration) ->
+                    val percentage = if (totalDuration > 0) 
+                        duration.toFloat() / totalDuration else 0f
+                    val colorIndex = typeDurations.indexOf(Pair(type, duration))
+                    
+                    TypeDurationCard(
+                        type = type,
+                        duration = duration,
+                        percentage = percentage,
+                        color = chartColors[colorIndex % chartColors.size],
+                        onClick = { onTypeClick(type) },
+                        animationDelay = colorIndex * 100
+                    )
+                }
+            }
+        }
+    }
 }
 
-// 标签画笔配置
-private val labelPaint = android.graphics.Paint().apply {
-    isAntiAlias = true
-    textSize = 30f
-    color = android.graphics.Color.BLACK
-    textAlign = android.graphics.Paint.Align.CENTER
+@Composable
+private fun TimeOverviewCard(
+    totalDuration: Long,
+    itemCount: Int,
+    typeCount: Int
+) {
+    val context = LocalContext.current
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            OverviewStat(
+                value = formatDurationShort(totalDuration),
+                label = "总时长"
+            )
+            
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            )
+            
+            OverviewStat(
+                value = "$itemCount",
+                label = "时间片"
+            )
+            
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            )
+            
+            OverviewStat(
+                value = "$typeCount",
+                label = "类型数"
+            )
+        }
+    }
+}
+
+@Composable
+private fun OverviewStat(
+    value: String,
+    label: String
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ModernPieChart(
+    data: List<Pair<TimePieceType, Long>>,
+    colors: List<Color>,
+    totalDuration: Long,
+    progress: Float
+) {
+    var hoverIndex by remember { mutableStateOf(-1) }
+    
+    Canvas(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        var startAngle = -90f
+        
+        data.forEachIndexed { index, (_, duration) ->
+            val sweep = if (totalDuration > 0) 
+                (duration.toFloat() / totalDuration * 360f) else 0f
+            
+            // 应用动画进度
+            val animatedSweep = sweep * progress
+            
+            val color = colors[index % colors.size]
+            val isHovered = hoverIndex == index
+            
+            // 绘制扇形
+            drawArc(
+                color = color,
+                startAngle = startAngle,
+                sweepAngle = animatedSweep,
+                useCenter = true,
+                size = size
+            )
+            
+            startAngle += animatedSweep
+        }
+        
+        // 中心空白圆（甜甜圈效果）
+        drawCircle(
+            color = android.graphics.Color.WHITE,
+            radius = size.minDimension / 4f,
+            center = center
+        )
+    }
+}
+
+@Composable
+private fun LegendItem(
+    color: Color,
+    label: String,
+    duration: Long,
+    percentage: Int
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(end = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (percentage > 0) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "$percentage%",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = color
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TypeDurationCard(
+    type: TimePieceType,
+    duration: Long,
+    percentage: Float,
+    color: Color,
+    onClick: () -> Unit,
+    animationDelay: Int
+) {
+    val context = LocalContext.current
+    var isVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(animationDelay.toLong())
+        isVisible = true
+    }
+    
+    val animatedProgress by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "cardAnimation"
+    )
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = if (isVisible) 2.dp else 0.dp,
+                shape = RoundedCornerShape(16.dp)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 颜色标识
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(color, CircleShape)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // 类型名称
+            Text(
+                text = type.name ?: context.getString(type.nameResId),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            
+            // 进度条
+            Box(
+                modifier = Modifier
+                    .weight(2f)
+                    .height(8.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        RoundedCornerShape(4.dp)
+                    )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(animatedProgress * percentage)
+                        .background(color, RoundedCornerShape(4.dp))
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // 时长和箭头
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatDurationShort(duration),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = "${(percentage * 100).toInt()}%",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// 辅助函数
+private fun formatDurationShort(durationMs: Long): String {
+    val hours = durationMs / (1000 * 60 * 60)
+    val minutes = (durationMs % (1000 * 60 * 60)) / (1000 * 60)
+    
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 -> "${hours}h"
+        minutes > 0 -> "${minutes}m"
+        else -> "0m"
+    }
 }
