@@ -19,6 +19,7 @@
  */
 package com.example.time.ui.timeRecord
 
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -100,6 +101,9 @@ import com.example.time.ui.theme.EmotionColors
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("time_app_settings", Context.MODE_PRIVATE) }
+    
     // ===== 状态变量 =====
     var record by remember { mutableStateOf("") }
     var tiYan by remember { mutableStateOf("") }
@@ -334,9 +338,23 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     )
                     
                     if (mainEvent.isNotBlank()) {
-                        // 新增：显示确认对话框而不是直接提交
-                        pendingTimePiece = timePiece
-                        showSubmitConfirm = true
+                        // 读取设置：是否需要确认对话框
+                        val requireConfirm = prefs.getBoolean("require_submit_confirm", true)
+                        
+                        if (requireConfirm) {
+                            // 显示确认对话框
+                            pendingTimePiece = timePiece
+                            showSubmitConfirm = true
+                        } else {
+                            // 直接提交
+                            viewModel.insertTimePiece(timePiece)
+                            
+                            // 清空输入
+                            record = ""
+                            tiYan = ""
+                            emotionStar = 3
+                            isTimePick = false
+                        }
                     }
                 },
                 modifier = Modifier.weight(1.2f),
@@ -365,16 +383,8 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 帮助按钮
-                IconTextButton(
-                    icon = "❓",
-                    text = "帮助",
-                    onClick = { isMDOpen = true }
-                )
-                
-                if (isMDOpen) {
-                    IntroductionDialog { isMDOpen = false }
-                }
+                // 设置按钮
+                ButtonToShowSettingsActivity()
                 
                 // 主题设置
                 val context = LocalContext.current
@@ -593,6 +603,22 @@ fun ButtonToShowIntroduction() {
         text = "手册",
         onClick = {
             val intent = Intent(context, ShowIntroductionActivity::class.java)
+            activityResultLauncher.launch(intent)
+        }
+    )
+}
+
+@Composable
+fun ButtonToShowSettingsActivity() {
+    val context = LocalContext.current
+    val activityResultLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { _ -> }
+
+    IconTextButton(
+        icon = "⚙️",
+        text = "设置",
+        onClick = {
+            val intent = Intent(context, com.example.time.ui.activity.SettingsActivity::class.java)
             activityResultLauncher.launch(intent)
         }
     )
