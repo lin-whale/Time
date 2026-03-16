@@ -54,7 +54,7 @@ fun HowTimeGo(
             .groupBy { it.emotion }
             .mapValues { (_, pieces) ->
                 pieces.sumOf { piece ->
-                    (piece.endTime?.time ?: 0L) - piece.startTime.time
+                    (piece.endTime?.time ?: 0L) - piece.it.fromTimePoint
                 }
             }
             .filter { it.value > 0 }
@@ -160,7 +160,7 @@ fun HowTimeGo(
                         avgFeeling = if (feelingDurations.isNotEmpty()) {
                             val totalFeelingScore = timePieces
                                 .filter { it.emotion > 0 && it.endTime != null }
-                                .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                                .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.fromTimePoint) }
                             (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
                         } else 3f,
                         feelingEmojis = feelingEmojis
@@ -217,7 +217,7 @@ fun HowTimeGo(
                                 val avgFeeling = if (feelingDurations.isNotEmpty()) {
                                     val totalFeelingScore = timePieces
                                         .filter { it.emotion > 0 && it.endTime != null }
-                                        .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                                        .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.fromTimePoint) }
                                     (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
                                 } else 3f
                                 
