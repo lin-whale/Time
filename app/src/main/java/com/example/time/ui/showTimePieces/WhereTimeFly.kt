@@ -1,5 +1,6 @@
 package com.example.time.ui.showTimePieces
 
+import android.util.Log
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.time.R
 import com.example.time.logic.model.TimePiece
 import com.example.time.ui.theme.ChartColors
 import java.util.*
