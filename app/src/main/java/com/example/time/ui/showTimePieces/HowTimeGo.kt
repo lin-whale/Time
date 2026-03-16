@@ -27,9 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
-import com.example.time.R
-import com.example.time.data.TimePiece
-import com.example.time.ui.theme.ChartColors
+import com.example.time.logic.model.TimePiece
+import com.example.time.ui.theme.EmotionColors
 import java.util.*
 import kotlin.math.min
 
@@ -41,16 +40,16 @@ import kotlin.math.min
 @Composable
 fun HowTimeGo(
     timePieces: List<TimePiece>,
-    onFeelingClick: (Int) -> Unit,
-    onBackPressed: () -> Unit
+    onFeelingClick: (Int) -> Unit = {},
+    onBackPressed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     
     // 计算各心情等级的时间分布
     val feelingDurations = remember(timePieces) {
         timePieces
-            .filter { it.endTime != null && it.feeling > 0 }
-            .groupBy { it.feeling }
+            .filter { it.endTime != null && it.emotion > 0 }
+            .groupBy { it.emotion }
             .mapValues { (_, pieces) ->
                 pieces.sumOf { piece ->
                     (piece.endTime?.time ?: 0L) - piece.startTime.time
@@ -155,11 +154,11 @@ fun HowTimeGo(
                 item {
                     FeelingOverviewCard(
                         totalDuration = totalDuration,
-                        itemCount = timePieces.count { it.feeling > 0 },
+                        itemCount = timePieces.count { it.emotion > 0 },
                         avgFeeling = if (feelingDurations.isNotEmpty()) {
                             val totalFeelingScore = timePieces
-                                .filter { it.feeling > 0 && it.endTime != null }
-                                .sumOf { it.feeling.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                                .filter { it.emotion > 0 && it.endTime != null }
+                                .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
                             (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
                         } else 3f,
                         feelingEmojis = feelingEmojis
@@ -215,8 +214,8 @@ fun HowTimeGo(
                                 // 中心显示平均心情
                                 val avgFeeling = if (feelingDurations.isNotEmpty()) {
                                     val totalFeelingScore = timePieces
-                                        .filter { it.feeling > 0 && it.endTime != null }
-                                        .sumOf { it.feeling.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
+                                        .filter { it.emotion > 0 && it.endTime != null }
+                                        .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.startTime.time) }
                                     (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
                                 } else 3f
                                 

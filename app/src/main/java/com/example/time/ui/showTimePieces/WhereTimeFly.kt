@@ -26,17 +26,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.time.R
-import com.example.time.data.TimePiece
-import com.example.time.data.TimePieceType
+import com.example.time.logic.model.TimePiece
 import com.example.time.ui.theme.ChartColors
-import com.example.time.viewmodel.TimePieceViewModel
-import java.util.Date
-import java.util.Calendar
+import java.util.*
 import kotlin.math.min
-import kotlin.math.max
-import kotlin.math.abs
-import kotlin.math.pow
 
 /**
  * 时间分布统计界面 - 现代化设计版本
@@ -46,16 +39,16 @@ import kotlin.math.pow
 @Composable
 fun WhereTimeFly(
     timePieces: List<TimePiece>,
-    onTypeClick: (TimePieceType) -> Unit,
-    onBackPressed: () -> Unit
+    onEventClick: (String) -> Unit = {},
+    onBackPressed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     
     // 计算各类型的时间分布
     val typeDurations = remember(timePieces) {
         timePieces
-            .filter { it.endTime != null && it.type != TimePieceType.UNKNOWN }
-            .groupBy { it.type }
+            .filter { it.endTime != null && it.mainEvent != String.UNKNOWN }
+            .groupBy { it.mainEvent }
             .mapValues { (_, pieces) ->
                 pieces.sumOf { piece ->
                     (piece.endTime?.time ?: 0L) - piece.startTime.time
@@ -226,7 +219,7 @@ fun WhereTimeFly(
                                         (duration.toFloat() / totalDuration * 100).toInt() else 0
                                     LegendItem(
                                         color = chartColors[index % chartColors.size],
-                                        label = type.name ?: context.getString(type.nameResId),
+                                        label = type.name ?: context.getString(0),
                                         duration = duration,
                                         percentage = percentage
                                     )
@@ -349,7 +342,7 @@ private fun OverviewStat(
 
 @Composable
 private fun ModernPieChart(
-    data: List<Pair<TimePieceType, Long>>,
+    data: List<Pair<String, Long>>,
     colors: List<Color>,
     totalDuration: Long,
     progress: Float
@@ -429,7 +422,7 @@ private fun LegendItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TypeDurationCard(
-    type: TimePieceType,
+    type: String,
     duration: Long,
     percentage: Float,
     color: Color,
@@ -481,7 +474,7 @@ private fun TypeDurationCard(
             
             // 类型名称
             Text(
-                text = type.name ?: context.getString(type.nameResId),
+                text = type.name ?: context.getString(0),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
