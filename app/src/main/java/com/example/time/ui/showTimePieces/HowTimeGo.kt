@@ -50,11 +50,11 @@ fun HowTimeGo(
     // 计算各心情等级的时间分布
     val feelingDurations = remember(timePieces) {
         timePieces
-            .filter { it.endTime != null && it.emotion > 0 }
+            .filter { it.timePoint > 0 && it.emotion > 0 }
             .groupBy { it.emotion }
             .mapValues { (_, pieces) ->
                 pieces.sumOf { piece ->
-                    (piece.endTime?.time ?: 0L) - piece.it.fromTimePoint
+                    piece.timePoint - piece.fromTimePoint
                 }
             }
             .filter { it.value > 0 }
@@ -150,7 +150,7 @@ fun HowTimeGo(
                     .padding(padding)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 8.dp, bottom = 80.dp)
+                contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
             ) {
                 // 心情概览卡片
                 item {
@@ -159,9 +159,9 @@ fun HowTimeGo(
                         itemCount = timePieces.count { it.emotion > 0 },
                         avgFeeling = if (feelingDurations.isNotEmpty()) {
                             val totalFeelingScore = timePieces
-                                .filter { it.emotion > 0 && it.endTime != null }
-                                .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.fromTimePoint) }
-                            (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
+                                .filter { it.emotion > 0 && it.timePoint > 0 }
+                                .sumOf { it.emotion.toLong() * (it.timePoint - it.fromTimePoint) }
+                            if (totalDuration > 0) (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f) else 3f
                         } else 3f,
                         feelingEmojis = feelingEmojis
                     )
@@ -181,7 +181,8 @@ fun HowTimeGo(
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -214,10 +215,10 @@ fun HowTimeGo(
                                 )
                                 
                                 // 中心显示平均心情
-                                val avgFeeling = if (feelingDurations.isNotEmpty()) {
+                                val avgFeeling = if (feelingDurations.isNotEmpty() && totalDuration > 0) {
                                     val totalFeelingScore = timePieces
-                                        .filter { it.emotion > 0 && it.endTime != null }
-                                        .sumOf { it.emotion.toLong() * ((it.endTime?.time ?: 0L) - it.fromTimePoint) }
+                                        .filter { it.emotion > 0 && it.timePoint > 0 }
+                                        .sumOf { it.emotion.toLong() * (it.timePoint - it.fromTimePoint) }
                                     (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
                                 } else 3f
                                 
@@ -240,8 +241,7 @@ fun HowTimeGo(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 feelingDurations.forEach { (feeling, duration) ->
                                     val percentage = if (totalDuration > 0) 
@@ -413,7 +413,7 @@ private fun ModernFeelingPieChart(
         
         // 中心空白圆（甜甜圈效果）
         drawCircle(
-            color = android.graphics.Color.WHITE,
+            color = Color.White,
             radius = size.minDimension / 4f,
             center = center
         )

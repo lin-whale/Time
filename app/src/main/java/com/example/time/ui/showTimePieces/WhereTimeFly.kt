@@ -49,11 +49,11 @@ fun WhereTimeFly(
     // 计算各类型的时间分布
     val typeDurations = remember(timePieces) {
         timePieces
-            .filter { it.endTime != null && it.mainEvent != String.UNKNOWN }
+            .filter { it.timePoint > 0 && it.mainEvent.isNotEmpty() }
             .groupBy { it.mainEvent }
             .mapValues { (_, pieces) ->
                 pieces.sumOf { piece ->
-                    (piece.endTime?.time ?: 0L) - piece.startTime.time
+                    piece.timePoint - piece.fromTimePoint
                 }
             }
             .filter { it.value > 0 }
@@ -150,7 +150,7 @@ fun WhereTimeFly(
                     .padding(padding)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 8.dp, bottom = 80.dp)
+                contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
             ) {
                 // 总时间概览卡片
                 item {
@@ -175,7 +175,8 @@ fun WhereTimeFly(
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -213,15 +214,14 @@ fun WhereTimeFly(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 typeDurations.forEachIndexed { index, (type, duration) ->
                                     val percentage = if (totalDuration > 0) 
-                                        (duration.toFloat() / totalDuration * 100).toInt() else 0
+                                        (duration.toDouble() / totalDuration * 100).toInt() else 0
                                     LegendItem(
                                         color = chartColors[index % chartColors.size],
-                                        label = type.name ?: context.getString(0),
+                                        label = type,
                                         duration = duration,
                                         percentage = percentage
                                     )
@@ -254,7 +254,7 @@ fun WhereTimeFly(
                         duration = duration,
                         percentage = percentage,
                         color = chartColors[colorIndex % chartColors.size],
-                        onClick = { onTypeClick(type) },
+                        onClick = { onEventClick(type) },
                         animationDelay = colorIndex * 100
                     )
                 }
@@ -380,7 +380,7 @@ private fun ModernPieChart(
         
         // 中心空白圆（甜甜圈效果）
         drawCircle(
-            color = android.graphics.Color.WHITE,
+            color = Color.White,
             radius = size.minDimension / 4f,
             center = center
         )
@@ -476,7 +476,7 @@ private fun TypeDurationCard(
             
             // 类型名称
             Text(
-                text = type.name ?: context.getString(0),
+                text = type,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
