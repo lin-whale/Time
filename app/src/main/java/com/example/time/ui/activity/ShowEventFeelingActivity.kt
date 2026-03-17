@@ -46,19 +46,16 @@ class ShowEventFeelingActivity : ComponentActivity() {
         enableEdgeToEdge()
         val mainEvent = intent.getStringExtra("mainEvent")
         setContent {
-            if (mainEvent != null) {
-                Box(Modifier.safeDrawingPadding()) {
-                    showEventFeelingPieces(viewModel = lifePieceViewModel, mainEvent = mainEvent)
+            TimeTheme {
+                if (mainEvent != null) {
+                    Box(Modifier.safeDrawingPadding()) {
+                        showEventFeelingPieces(
+                            viewModel = lifePieceViewModel, 
+                            mainEvent = mainEvent,
+                            onBackPressed = { finish() }
+                        )
+                    }
                 }
-//                TimeTheme {
-//                    Box(Modifier.safeDrawingPadding()){
-//                        Surface(
-//                            modifier = Modifier.fillMaxSize(),
-//                        ) {
-//                            showEventFeelingPieces(viewModel = lifePieceViewModel, mainEvent = mainEvent)
-//                        }
-//                    }
-//                }
             }
         }
     }
@@ -66,12 +63,12 @@ class ShowEventFeelingActivity : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun showEventFeelingPieces(viewModel: TimeViewModel, mainEvent: String){
+fun showEventFeelingPieces(viewModel: TimeViewModel, mainEvent: String, onBackPressed: () -> Unit = {}){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
     viewModel.getTimePiecesByMainEvent(mainEvent)
     Column {
         Text(text = mainEvent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        HowTimeGo(timePieces = timePieces)
+        HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
         TimeFeelingListByEvent(timePieceList = timePieces)
     }
 }

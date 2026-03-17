@@ -34,8 +34,10 @@ class ShowTimeActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            Box(Modifier.safeDrawingPadding()) {
-                showTime(viewModel = lifePieceViewModel)
+            TimeTheme {
+                Box(Modifier.safeDrawingPadding()) {
+                    showTime(viewModel = lifePieceViewModel, onBackPressed = { finish() })
+                }
             }
         }
     }
@@ -43,10 +45,10 @@ class ShowTimeActivity : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun showTime(viewModel: TimeViewModel){
+fun showTime(viewModel: TimeViewModel, onBackPressed: () -> Unit = {}){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
     Column {
         DatePeriodPicker(viewModel = viewModel)
-        WhereTimeFly(timePieces = timePieces)
+        WhereTimeFly(timePieces = timePieces, onBackPressed = onBackPressed)
     }
 }

@@ -766,7 +766,7 @@ private fun ExpandableTypeCard(
 }
 
 /**
- * 时间片项
+ * 时间片项（支持展开体验记录）
  */
 @Composable
 private fun TimePieceItem(
@@ -774,10 +774,18 @@ private fun TimePieceItem(
     color: Color,
     onClick: () -> Unit
 ) {
+    var isRecordExpanded by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable { 
+                if (timePiece.lastTimeRecord.isNotEmpty()) {
+                    isRecordExpanded = !isRecordExpanded
+                } else {
+                    onClick()
+                }
+            },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -821,9 +829,18 @@ private fun TimePieceItem(
                         text = "💭 ${timePiece.lastTimeRecord}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = if (isRecordExpanded) Int.MAX_VALUE else 2,
+                        overflow = if (isRecordExpanded) TextOverflow.Visible else TextOverflow.Ellipsis
                     )
+                    // 展开提示
+                    if (timePiece.lastTimeRecord.length > 30) {
+                        Text(
+                            text = if (isRecordExpanded) "点击收起" else "点击展开全部",
+                            fontSize = 11.sp,
+                            color = color,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
             }
             

@@ -35,29 +35,22 @@ class ShowFeelingActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            Box(Modifier.safeDrawingPadding()) {
-                showFeelingPieces(viewModel = lifePieceViewModel)
+            TimeTheme {
+                Box(Modifier.safeDrawingPadding()) {
+                    showFeelingPieces(viewModel = lifePieceViewModel, onBackPressed = { finish() })
+                }
             }
-//            TimeTheme {
-//                Box(Modifier.safeDrawingPadding()){
-//                    Surface(
-//                        modifier = Modifier.fillMaxSize(),
-//                    ) {
-//                        showFeelingPieces(viewModel = lifePieceViewModel)
-//                    }
-//                }
-//            }
         }
     }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun showFeelingPieces(viewModel: TimeViewModel){
+fun showFeelingPieces(viewModel: TimeViewModel, onBackPressed: () -> Unit = {}){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
     Column {
         DatePeriodPicker(viewModel = viewModel)
-        HowTimeGo(timePieces = timePieces)
+        HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
         TimeFeelingList(timePieceList = timePieces)
     }
 }
