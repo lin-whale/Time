@@ -32,6 +32,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.time.R
@@ -424,14 +425,14 @@ private fun InteractivePieChart(
             // 选中的扇形稍微扩大
             val radius = if (isSelected) minDim / 2f + 8.dp.toPx() else minDim / 2f
             
-            // 绘制扇形
+            // 绘制扇形（正确计算size和topLeft）
             drawArc(
-                color = if (isSelected) color.copy(alpha = 1f) else color,
+                color = color,
                 startAngle = startAngle,
                 sweepAngle = animatedSweep,
                 useCenter = true,
-                size = Size(radius, radius),
-                topLeft = Offset(center.x - radius / 2f, center.y - radius / 2f)
+                size = Size(radius * 2, radius * 2),
+                topLeft = Offset(center.x - radius, center.y - radius)
             )
             
             startAngle += animatedSweep
@@ -813,6 +814,17 @@ private fun TimePieceItem(
                     fontWeight = FontWeight.Medium,
                     maxLines = 2
                 )
+                // 体验记录
+                if (timePiece.lastTimeRecord.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "💭 ${timePiece.lastTimeRecord}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             
             // 心情评分
