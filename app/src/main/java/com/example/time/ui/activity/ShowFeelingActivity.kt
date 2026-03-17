@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,9 +49,14 @@ class ShowFeelingActivity : ComponentActivity() {
 @Composable
 fun showFeelingPieces(viewModel: TimeViewModel, onBackPressed: () -> Unit = {}){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
-    Column {
-        DatePeriodPicker(viewModel = viewModel)
-        HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
-        TimeFeelingList(timePieceList = timePieces)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column {
+            DatePeriodPicker(viewModel = viewModel)
+            HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
+            TimeFeelingList(timePieceList = timePieces)
+        }
     }
 }

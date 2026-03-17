@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,9 +51,14 @@ class ShowTimePiecesActivity : ComponentActivity() {
 @Composable
 fun showTimePieces(viewModel: TimeViewModel){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
-    Column {
-        DatePeriodPicker(viewModel = viewModel)
-        // 传入 viewModel 支持点击编辑
-        TimePieceList(timePieces = timePieces, viewModel = viewModel)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column {
+            DatePeriodPicker(viewModel = viewModel)
+            // 传入 viewModel 支持点击编辑
+            TimePieceList(timePieces = timePieces, viewModel = viewModel)
+        }
     }
 }

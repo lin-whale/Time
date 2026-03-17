@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,9 +67,14 @@ class ShowEventFeelingActivity : ComponentActivity() {
 fun showEventFeelingPieces(viewModel: TimeViewModel, mainEvent: String, onBackPressed: () -> Unit = {}){
     val timePieces by viewModel.timePieces.observeAsState(listOf())
     viewModel.getTimePiecesByMainEvent(mainEvent)
-    Column {
-        Text(text = mainEvent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
-        TimeFeelingListByEvent(timePieceList = timePieces)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column {
+            Text(text = mainEvent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            HowTimeGo(timePieces = timePieces, onBackPressed = onBackPressed)
+            TimeFeelingListByEvent(timePieceList = timePieces)
+        }
     }
 }
