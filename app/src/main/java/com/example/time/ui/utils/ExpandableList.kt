@@ -38,6 +38,11 @@ import com.example.time.ui.showTimePieces.TimePieceListColumn
 
 @Composable
 fun ExpandableList(timePieces: List<TimePiece>, colorMap: Map<String, Color>) {
+    // 空状态处理
+    if (timePieces.isEmpty()) {
+        return
+    }
+    
     val timePiecesByMainEvent = timePieces
         .groupBy { it.mainEvent }
         .toList()
@@ -46,8 +51,10 @@ fun ExpandableList(timePieces: List<TimePiece>, colorMap: Map<String, Color>) {
     val timePiecesLength = timePiecesByMainEvent.mapValues { entry ->
         entry.value.sumOf { it.timePoint - it.fromTimePoint }
     }
-    // repeat(timePiecesByMainEvent.size) 会报错，暂时处理为1000
-    val expandedStates = remember { mutableStateListOf<Boolean>().apply { repeat(1000) { add(false) } } }
+    // 动态创建展开状态列表，避免越界
+    val expandedStates = remember { mutableStateListOf<Boolean>().apply { 
+        repeat(timePiecesByMainEvent.size.coerceAtLeast(1)) { add(false) } 
+    } }
     val maxTimeLength = timePiecesLength.maxByOrNull { it.value }?.value
     // 找到最大的 value
     val maxEntry = timePiecesLength.maxByOrNull { it.value }
@@ -55,7 +62,7 @@ fun ExpandableList(timePieces: List<TimePiece>, colorMap: Map<String, Color>) {
 
     // 构建新的 Map<String, Float>
     val normalizedTimePiecesLength = timePiecesLength.mapValues { entry ->
-        entry.value.toFloat() / maxValue.toFloat()
+        if (maxValue > 0) entry.value.toFloat() / maxValue.toFloat() else 0f
     }
     LazyColumn(
         modifier = Modifier

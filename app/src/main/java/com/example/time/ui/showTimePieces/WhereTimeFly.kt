@@ -106,7 +106,7 @@ fun WhereTimeFly(
         animationProgress = 1f
     }
     
-    // 解析颜色
+    // 解析颜色（确保不为空）
     val chartColors = remember {
         listOf(
             Color(android.graphics.Color.parseColor("#FF6B6B")), // 珊瑚红
@@ -120,6 +120,11 @@ fun WhereTimeFly(
             Color(android.graphics.Color.parseColor("#BB8FCE")), // 浅紫
             Color(android.graphics.Color.parseColor("#85C1E9"))  // 浅蓝
         )
+    }
+    
+    // 安全获取颜色
+    fun safeGetColor(index: Int): Color {
+        return if (chartColors.isNotEmpty()) chartColors[index % chartColors.size] else Color.Blue
     }
     
     // 饼图点击处理：使用 CoroutineScope
