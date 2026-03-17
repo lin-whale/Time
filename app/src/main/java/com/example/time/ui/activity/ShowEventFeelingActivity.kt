@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import android.os.Bundle
-import android.text.Layout.Alignment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,12 +38,14 @@ import androidx.compose.ui.unit.dp
 import com.example.time.LifePieceApplication
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.TimeViewModelFactory
-import com.example.time.ui.showTimePieces.DatePeriodPicker
+import com.example.time.ui.showTimePieces.CustomDatePicker
 import com.example.time.ui.showTimePieces.HowTimeGo
 import com.example.time.ui.showTimePieces.TimeFeelingList
 import com.example.time.ui.showTimePieces.TimeFeelingListByEvent
 import com.example.time.ui.showTimePieces.TimePieceList
 import com.example.tiptime.ui.theme.TimeTheme
+import java.time.LocalDate
+import java.time.ZoneId
 
 class ShowEventFeelingActivity : ComponentActivity() {
     private val lifePieceViewModel: TimeViewModel by viewModels {
