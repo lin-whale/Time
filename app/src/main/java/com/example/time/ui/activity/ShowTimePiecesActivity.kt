@@ -37,18 +37,11 @@ class ShowTimePiecesActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            Box(Modifier.safeDrawingPadding()) {
-                showTimePieces(viewModel = lifePieceViewModel)
+            TimeTheme {
+                Box(Modifier.safeDrawingPadding()) {
+                    showTimePieces(viewModel = lifePieceViewModel)
+                }
             }
-//            TimeTheme {
-//                Box(Modifier.safeDrawingPadding()){
-//                    Surface(
-//                        modifier = Modifier.fillMaxSize(),
-//                    ) {
-//                        showTimePieces(viewModel = lifePieceViewModel)
-//                    }
-//                }
-//            }
         }
     }
 }
