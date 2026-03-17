@@ -1,5 +1,6 @@
 /**
  * Modern TimePiece Card - 现代化时间记录卡片
+ * 支持深色模式
  * 
  * 设计特点：
  * - 大圆角（24dp）
@@ -68,7 +69,7 @@ fun ModernTimePieceCard(
             .shadow(
                 elevation = ModernSizes.ElevationMedium.dp,
                 shape = RoundedCornerShape(ModernSizes.CornerLarge.dp),
-                spotColor = ModernColors.Primary.copy(alpha = 0.1f)
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             )
             .then(
                 if (onClick != null) {
@@ -79,7 +80,7 @@ fun ModernTimePieceCard(
             ),
         shape = RoundedCornerShape(ModernSizes.CornerLarge.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Box(
@@ -110,7 +111,7 @@ fun ModernTimePieceCard(
                             text = timePiece.mainEvent,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ModernColors.TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -121,7 +122,7 @@ fun ModernTimePieceCard(
                             Text(
                                 text = timePiece.subEvent,
                                 fontSize = 14.sp,
-                                color = ModernColors.TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -133,13 +134,13 @@ fun ModernTimePieceCard(
                     // 时长标签
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = ModernColors.getEmotionColor(timePiece.emotion).copy(alpha = 0.15f)
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
                             text = durationText,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = ModernColors.getEmotionColor(timePiece.emotion),
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
@@ -160,14 +161,14 @@ fun ModernTimePieceCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = ModernColors.TextTertiary,
+                            tint = MaterialTheme.colorScheme.outline,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "${convertTimeFormat(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormat(timePiece.timePoint, "HH:mm")}",
                             fontSize = 13.sp,
-                            color = ModernColors.TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     
@@ -182,7 +183,7 @@ fun ModernTimePieceCard(
                                 tint = if (index < timePiece.emotion)
                                     ModernColors.getEmotionColor(timePiece.emotion)
                                 else
-                                    ModernColors.TextTertiary.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -194,7 +195,7 @@ fun ModernTimePieceCard(
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     Divider(
-                        color = ModernColors.SurfaceVariant,
+                        color = MaterialTheme.colorScheme.outlineVariant,
                         thickness = 1.dp
                     )
                     
@@ -203,7 +204,7 @@ fun ModernTimePieceCard(
                     Text(
                         text = timePiece.lastTimeRecord,
                         fontSize = 13.sp,
-                        color = ModernColors.TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 18.sp
@@ -231,7 +232,7 @@ fun CompactTimePieceCard(
             .clickable(enabled = onClick != null) { onClick?.invoke() },
         shape = RoundedCornerShape(ModernSizes.CornerMedium.dp),
         colors = CardDefaults.cardColors(
-            containerColor = emotionColor.copy(alpha = 0.08f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -256,7 +257,7 @@ fun CompactTimePieceCard(
                     text = timePiece.mainEvent,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = ModernColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -266,7 +267,7 @@ fun CompactTimePieceCard(
                 Text(
                     text = "${convertTimeFormat(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormat(timePiece.timePoint, "HH:mm")}",
                     fontSize = 12.sp,
-                    color = ModernColors.TextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             

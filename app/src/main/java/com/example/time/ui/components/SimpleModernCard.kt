@@ -1,5 +1,6 @@
 /**
  * Simple Modern Card - 简化版现代化卡片（无动画）
+ * 支持深色模式
  */
 package com.example.time.ui.components
 
@@ -37,7 +38,7 @@ fun SimpleModernCard(
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -62,7 +63,7 @@ fun SimpleModernCard(
                     text = timePiece.mainEvent + if (timePiece.subEvent.isNotEmpty()) "：${timePiece.subEvent}" else "",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ModernColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -74,7 +75,7 @@ fun SimpleModernCard(
                     Text(
                         text = "${convertTimeFormat(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormat(timePiece.timePoint, "HH:mm")}",
                         fontSize = 14.sp,
-                        color = ModernColors.TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
                     Spacer(modifier = Modifier.width(12.dp))
@@ -85,7 +86,7 @@ fun SimpleModernCard(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = null,
-                                tint = if (index < timePiece.emotion) emotionColor else ModernColors.TextTertiary.copy(alpha = 0.2f),
+                                tint = if (index < timePiece.emotion) emotionColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -98,7 +99,7 @@ fun SimpleModernCard(
                     Text(
                         text = "💭 ${timePiece.lastTimeRecord}",
                         fontSize = 13.sp,
-                        color = ModernColors.TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

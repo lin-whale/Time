@@ -160,7 +160,7 @@ fun TimePieceCard(
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = if (index < timePiece.emotion) Color(0xFFFFD700) else Color.Gray.copy(alpha = 0.2f),
+                            tint = if (index < timePiece.emotion) Color(0xFFFFD700) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                             modifier = Modifier.size(16.dp)
                         )
                     }
