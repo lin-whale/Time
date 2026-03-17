@@ -38,6 +38,7 @@ import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.activity.ShowEventFeelingActivity
 import com.example.time.ui.theme.EmotionColors
+import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.*
 
@@ -117,11 +118,13 @@ fun HowTimeGo(
     val feelingEmojis = listOf("😞", "😕", "😐", "😊", "😄")
     val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
     
-    // 饼图点击处理
+    // 饼图点击处理：使用 CoroutineScope
+    val coroutineScope = rememberCoroutineScope()
+    
     fun onPieSliceClick(index: Int) {
         selectedFeelingIndex = if (selectedFeelingIndex == index) -1 else index
         if (selectedFeelingIndex >= 0) {
-            kotlinx.coroutines.GlobalScope.launch {
+            coroutineScope.launch {
                 listState.animateScrollToItem(index + 2)
             }
         }
@@ -379,7 +382,8 @@ private fun InteractiveFeelingPieChart(
                     val dy = offset.y - center.y
                     
                     val distance = sqrt(dx * dx + dy * dy)
-                    val outerRadius = size.minDimension / 2f
+                    val minDim = min(size.width, size.height)
+                    val outerRadius = minDim / 2f
                     val innerRadius = outerRadius / 4f
                     
                     if (distance >= innerRadius && distance <= outerRadius) {
@@ -398,6 +402,7 @@ private fun InteractiveFeelingPieChart(
                 }
             }
     ) {
+        val minDim = min(size.width, size.height)
         var startAngle = -90f
         
         data.forEachIndexed { index, (feeling, duration) ->
@@ -408,15 +413,15 @@ private fun InteractiveFeelingPieChart(
             val color = colors[feeling - 1]
             val isSelected = selectedIndex == index
             
-            val radius = if (isSelected) size.minDimension / 2f + 8.dp.toPx() else size.minDimension / 2f
+            val diameter = if (isSelected) minDim + 16.dp.toPx() else minDim
             
             drawArc(
                 color = color,
                 startAngle = startAngle,
                 sweepAngle = animatedSweep,
                 useCenter = true,
-                size = Size(radius * 2, radius * 2),
-                topLeft = Offset(center.x - radius, center.y - radius)
+                size = Size(diameter, diameter),
+                topLeft = Offset(center.x - diameter / 2f, center.y - diameter / 2f)
             )
             
             startAngle += animatedSweep
@@ -424,7 +429,7 @@ private fun InteractiveFeelingPieChart(
         
         drawCircle(
             color = Color.White,
-            radius = size.minDimension / 4f,
+            radius = minDim / 4f,
             center = center
         )
     }
@@ -551,7 +556,7 @@ private fun ModernFeelingPieChart(
         
         drawCircle(
             color = Color.White,
-            radius = size.minDimension / 4f,
+            radius = min(size.width, size.height) / 4f,
             center = center
         )
     }
@@ -695,9 +700,10 @@ private fun ExpandableFeelingCard(
             
             // 展开后的时间片列表
             if (isExpanded && timePieces.isNotEmpty()) {
-                HorizontalDivider(
+                Divider(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp
                 )
                 
                 Column(

@@ -40,6 +40,7 @@ import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.activity.ShowEventFeelingActivity
 import com.example.time.ui.theme.ChartColors
+import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.*
 
@@ -120,12 +121,14 @@ fun WhereTimeFly(
         )
     }
     
-    // 饼图点击处理
+    // 饼图点击处理：使用 CoroutineScope
+    val coroutineScope = rememberCoroutineScope()
+    
     fun onPieSliceClick(index: Int) {
         selectedTypeIndex = if (selectedTypeIndex == index) -1 else index
         if (selectedTypeIndex >= 0) {
             // 滚动到对应的列表项（+2 是因为有概览卡片和饼图两个item）
-            kotlinx.coroutines.GlobalScope.launch {
+            coroutineScope.launch {
                 listState.animateScrollToItem(index + 2)
             }
         }
@@ -372,7 +375,8 @@ private fun InteractivePieChart(
                     
                     // 检查是否在圆环内（非中心区域）
                     val distance = sqrt(dx * dx + dy * dy)
-                    val outerRadius = size.minDimension / 2f
+                    val minDim = min(size.width, size.height)
+                    val outerRadius = minDim / 2f
                     val innerRadius = outerRadius / 4f
                     
                     if (distance >= innerRadius && distance <= outerRadius) {
@@ -406,6 +410,7 @@ private fun InteractivePieChart(
                 }
             }
     ) {
+        val minDim = min(size.width, size.height)
         var startAngle = -90f
         
         data.forEachIndexed { index, (_, duration) ->
@@ -417,7 +422,7 @@ private fun InteractivePieChart(
             val isSelected = selectedIndex == index
             
             // 选中的扇形稍微扩大
-            val radius = if (isSelected) size.minDimension / 2f + 8.dp.toPx() else size.minDimension / 2f
+            val radius = if (isSelected) minDim / 2f + 8.dp.toPx() else minDim / 2f
             
             // 绘制扇形
             drawArc(
@@ -425,8 +430,8 @@ private fun InteractivePieChart(
                 startAngle = startAngle,
                 sweepAngle = animatedSweep,
                 useCenter = true,
-                size = Size(radius * 2, radius * 2),
-                topLeft = Offset(center.x - radius, center.y - radius)
+                size = Size(radius, radius),
+                topLeft = Offset(center.x - radius / 2f, center.y - radius / 2f)
             )
             
             startAngle += animatedSweep
@@ -435,7 +440,7 @@ private fun InteractivePieChart(
         // 中心空白圆（甜甜圈效果）
         drawCircle(
             color = Color.White,
-            radius = size.minDimension / 4f,
+            radius = minDim / 4f,
             center = center
         )
     }
@@ -720,9 +725,10 @@ private fun ExpandableTypeCard(
             
             // 展开后的时间片列表
             if (isExpanded && timePieces.isNotEmpty()) {
-                HorizontalDivider(
+                Divider(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp
                 )
                 
                 Column(
