@@ -2,7 +2,9 @@ package com.example.time.ui.showTimePieces
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -64,6 +66,7 @@ fun DatePeriodPicker(viewModel: TimeViewModel) {
             Icon(
                 imageVector = Icons.Default.ArrowForward,
                 contentDescription = "Arrow",
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
             CustomDatePicker(
@@ -87,6 +90,7 @@ fun CustomDatePicker(
     onValueChange: (LocalDate) -> Unit,
     modifier: Modifier
 ) {
+    val darkTheme = isSystemInDarkTheme()
 
     val open = remember { mutableStateOf(false) }
 
@@ -122,6 +126,7 @@ fun CustomDatePicker(
             disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surface,
         )
     )
 }
