@@ -81,6 +81,17 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
         }
     }
     
+    /**
+     * 根据主事件和时间范围获取时间片段
+     */
+    fun getTimePiecesByMainEventBetween(mainEvent: String, startTime: Long, endTime: Long){
+        viewModelScope.launch {
+            val allPieces = repository.getTimePiecesByMainEvent(mainEvent)
+            val filteredPieces = allPieces.filter { it.timePoint in startTime..endTime }
+            _timePieces.value = filteredPieces
+        }
+    }
+    
     // ========== 新增编辑功能 ==========
     
     /**

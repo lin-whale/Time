@@ -39,6 +39,7 @@ import com.example.time.R
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.activity.ShowEventFeelingActivity
 import com.example.time.ui.theme.ChartColors
 import kotlinx.coroutines.launch
@@ -815,7 +816,7 @@ private fun TimePieceItem(
             Column(modifier = Modifier.weight(1f)) {
                 // 时间
                 Text(
-                    text = "${convertTimeFormat(timePiece.timePoint, "M/d HH:mm")} · ${convertDurationFormat(timePiece.timePoint - timePiece.fromTimePoint, "%d时%d分")}",
+                    text = "${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")} · ${convertDurationFormat(timePiece.timePoint - timePiece.fromTimePoint, "%d时%d分")}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

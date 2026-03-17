@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.TimeViewModel
 import com.example.time.ui.timeRecord.SimpleTimePieceEditDialog
 import com.example.time.ui.components.SimpleModernCard
@@ -145,7 +146,7 @@ fun TimePieceCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = convertTimeFormat(timePiece.timePoint, "M/d HH:mm"),
+                    text = convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm"),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary

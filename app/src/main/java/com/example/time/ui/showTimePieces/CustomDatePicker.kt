@@ -82,6 +82,67 @@ fun DatePeriodPicker(viewModel: TimeViewModel) {
     }
 }
 
+/**
+ * 带事件的日期选择器（用于事件统计页面）
+ */
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun DatePeriodPickerWithEvent(
+    viewModel: TimeViewModel, 
+    mainEvent: String,
+    defaultDays: Long = 365L
+) {
+    val dateFrom = remember { mutableStateOf(LocalDate.now().minusDays(defaultDays)) }
+    val dateTo = remember { mutableStateOf(LocalDate.now().plusDays(1)) }
+
+    val msTimeFrom = remember {
+        mutableStateOf(
+            dateFrom.value.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
+        )
+    }
+    val msTimeTo = remember {
+        mutableStateOf(
+            dateTo.value.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
+        )
+    }
+    
+    // 初始加载
+    viewModel.getTimePiecesByMainEventBetween(mainEvent, msTimeFrom.value, msTimeTo.value)
+
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CustomDatePicker(
+                value = dateFrom.value,
+                onValueChange = {
+                    msTimeFrom.value =
+                        it.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
+                    dateFrom.value = it
+                    viewModel.getTimePiecesByMainEventBetween(mainEvent, msTimeFrom.value, msTimeTo.value)
+                },
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = "Arrow",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            CustomDatePicker(
+                value = dateTo.value,
+                onValueChange = {
+                    msTimeTo.value =
+                        it.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
+                    dateTo.value = it
+                    viewModel.getTimePiecesByMainEventBetween(mainEvent, msTimeFrom.value, msTimeTo.value)
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

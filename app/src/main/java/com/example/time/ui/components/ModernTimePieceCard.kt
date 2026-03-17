@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.theme.ModernColors
 import com.example.time.ui.theme.ModernSizes
 import kotlin.math.roundToInt
@@ -166,7 +167,7 @@ fun ModernTimePieceCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${convertTimeFormat(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormat(timePiece.timePoint, "HH:mm")}",
+                            text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "HH:mm")}",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
