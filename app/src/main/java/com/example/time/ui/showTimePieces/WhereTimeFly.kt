@@ -37,7 +37,7 @@ import kotlin.math.min
  * 时间分布统计界面 - 现代化设计版本
  * 使用优雅的卡片布局和微动画
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WhereTimeFly(
     timePieces: List<TimePiece>,
@@ -110,8 +110,7 @@ fun WhereTimeFly(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    elevation = 0.dp
+                    containerColor = Color.Transparent
                 )
             )
         }

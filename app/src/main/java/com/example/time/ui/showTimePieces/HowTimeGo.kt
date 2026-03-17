@@ -38,7 +38,7 @@ import kotlin.math.min
  * 心情分布统计界面 - 现代化设计版本
  * 展示不同心情等级的时间分布
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HowTimeGo(
     timePieces: List<TimePiece>,
@@ -110,8 +110,7 @@ fun HowTimeGo(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    elevation = 0.dp
+                    containerColor = Color.Transparent
                 )
             )
         }
