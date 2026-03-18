@@ -255,22 +255,22 @@ fun HowTimeGo(
                                 )
                                 
                                 // 中心显示平均心情或选中心情
-                                val displayFeeling = if (selectedFeelingIndex >= 0 && selectedFeelingIndex < feelingDurations.size) {
-                                    feelingDurations[selectedFeelingIndex].first
+                                val displayEmoji = if (selectedFeelingIndex >= 0 && selectedFeelingIndex < feelingDurations.size) {
+                                    feelingEmojis[feelingDurations[selectedFeelingIndex].first - 1]
                                 } else {
-                                    // 计算平均心情
-                                    if (feelingDurations.isNotEmpty() && totalDuration > 0) {
+                                    // 计算平均心情（四舍五入）
+                                    val avgFeeling = if (feelingDurations.isNotEmpty() && totalDuration > 0) {
                                         val totalFeelingScore = timePieces
                                             .filter { it.emotion > 0 && it.timePoint > 0 }
                                             .sumOf { it.emotion.toLong() * (it.timePoint - it.fromTimePoint) }
-                                        (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f).toInt()
-                                    } else 3
+                                        (totalFeelingScore.toFloat() / totalDuration).coerceIn(1f, 5f)
+                                    } else 3f
+                                    feelingEmojis[(avgFeeling - 0.5f).toInt().coerceIn(0, 4)]
                                 }
                                 
-                                val emojiIndex = (displayFeeling - 1).coerceIn(0, 4)
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = feelingEmojis[emojiIndex],
+                                        text = displayEmoji,
                                         fontSize = 32.sp
                                     )
                                     if (selectedFeelingIndex >= 0 && selectedFeelingIndex < feelingDurations.size) {
@@ -281,7 +281,7 @@ fun HowTimeGo(
                                             text = "$percentage%",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = feelingColors[feelingColors.indices.find { feelingDurations[selectedFeelingIndex].first - 1 == it } ?: 2]
+                                            color = feelingColors[feeling - 1]
                                         )
                                     }
                                 }
@@ -466,7 +466,7 @@ private fun FeelingOverviewCard(
             // 平均心情
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = feelingEmojis[(avgFeeling - 1).toInt().coerceIn(0, 4)],
+                    text = feelingEmojis[(avgFeeling - 0.5f).toInt().coerceIn(0, 4)],
                     fontSize = 28.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
