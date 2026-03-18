@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
-import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 
 @Composable
 fun TimePieceListForEvent(timePieces: List<TimePiece>) {
@@ -42,8 +42,8 @@ fun TimePieceCardForEvent(timePiece: TimePiece) {
 
             Row {
                 Text(
-                    text = convertTimeFormat(
-                        timePiece.timePoint,"M/d  HH:mm"),
+                    text = convertTimeFormatSmart(
+                        timePiece.timePoint,"M/d HH:mm"),
                     Modifier.weight(1f), textAlign = TextAlign.Start
                 )
                 Text(

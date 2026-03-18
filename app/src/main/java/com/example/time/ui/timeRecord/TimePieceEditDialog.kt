@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.theme.EmotionColors
 
 /**
@@ -154,7 +155,7 @@ fun TimePieceEditDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = convertTimeFormat(editedFromTime, "MM/dd HH:mm"),
+                                text = convertTimeFormatSmart(editedFromTime, "M/d HH:mm"),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.primary
@@ -177,7 +178,7 @@ fun TimePieceEditDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = convertTimeFormat(editedToTime, "MM/dd HH:mm"),
+                                text = convertTimeFormatSmart(editedToTime, "M/d HH:mm"),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.primary
@@ -456,7 +457,7 @@ fun InsertTimePieceDialog(
                 
                 // 显示时间范围
                 Text(
-                    text = "${convertTimeFormat(originalPiece.fromTimePoint, "MM/dd HH:mm")} → ${convertTimeFormat(originalPiece.timePoint, "MM/dd HH:mm")}",
+                    text = "${convertTimeFormatSmart(originalPiece.fromTimePoint, "M/d HH:mm")} → ${convertTimeFormatSmart(originalPiece.timePoint, "M/d HH:mm")}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -468,7 +469,7 @@ fun InsertTimePieceDialog(
                     onClick = { isSelectingTime = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("切割点：${convertTimeFormat(splitTime, "MM/dd HH:mm")}")
+                    Text("切割点：${convertTimeFormatSmart(splitTime, "M/d HH:mm")}")
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))

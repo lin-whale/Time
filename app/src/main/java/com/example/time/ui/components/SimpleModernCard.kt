@@ -74,7 +74,7 @@ fun SimpleModernCard(
                 // 时间范围
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "HH:mm")}",
+                        text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "M/d HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")}",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

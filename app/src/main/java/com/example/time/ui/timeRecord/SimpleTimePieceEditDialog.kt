@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
+import com.example.time.logic.utils.convertTimeFormatSmart
 import kotlin.math.roundToLong
 
 /**
@@ -182,8 +183,8 @@ fun SimpleTimePieceEditDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("开始时间", fontSize = 12.sp, color = Color.Gray)
                         Text(
-                            convertTimeFormat(editedFromTime, "HH:mm"),
-                            fontSize = 24.sp,
+                            convertTimeFormatSmart(editedFromTime, "M/d HH:mm"),
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         // 上下调整按钮
@@ -203,8 +204,8 @@ fun SimpleTimePieceEditDialog(
                     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                         Text("结束时间", fontSize = 12.sp, color = Color.Gray)
                         Text(
-                            convertTimeFormat(editedToTime, "HH:mm"),
-                            fontSize = 24.sp,
+                            convertTimeFormatSmart(editedToTime, "M/d HH:mm"),
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         // 上下调整按钮
@@ -340,7 +341,7 @@ fun TimelineBar(
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
-                text = "${convertTimeFormat(fromTime, "HH:mm")} → ${convertTimeFormat(toTime, "HH:mm")}",
+                text = "${convertTimeFormatSmart(fromTime, "M/d HH:mm")} → ${convertTimeFormatSmart(toTime, "M/d HH:mm")}",
                 fontSize = 12.sp,
                 color = Color.White,
                 fontWeight = if (editable) FontWeight.Bold else FontWeight.Normal,

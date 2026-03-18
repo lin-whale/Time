@@ -167,7 +167,7 @@ fun ModernTimePieceCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "HH:mm")}",
+                            text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "M/d HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")}",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -266,7 +266,7 @@ fun CompactTimePieceCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 
                 Text(
-                    text = "${convertTimeFormat(timePiece.fromTimePoint, "HH:mm")} - ${convertTimeFormat(timePiece.timePoint, "HH:mm")}",
+                    text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "M/d HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
