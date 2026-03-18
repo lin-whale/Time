@@ -2,9 +2,9 @@
  * 心情Emoji配置管理
  * 
  * 功能：
- * - 管理各心情等级对应的emoji
- * - 支持用户自定义emoji
- * - 提供默认emoji配置
+ * - 管理各心情等级对应的emoji和文字标签
+ * - 支持用户自定义emoji和文字
+ * - 提供默认配置
  */
 package com.example.time.logic.utils
 
@@ -55,12 +55,33 @@ object EmojiConfig {
     }
     
     /**
+     * 获取指定心情等级的文字标签
+     * @param context 上下文
+     * @param feeling 心情等级 (1-5)
+     * @return 对应的文字标签
+     */
+    fun getLabel(context: Context, feeling: Int): String {
+        val prefs = getPrefs(context)
+        val defaultLabel = DEFAULT_LABELS.getOrElse(feeling - 1) { "一般" }
+        return prefs.getString("label_$feeling", defaultLabel) ?: defaultLabel
+    }
+    
+    /**
      * 获取所有心情等级的emoji列表
      * @param context 上下文
      * @return emoji列表 (索引0对应心情1)
      */
     fun getAllEmojis(context: Context): List<String> {
         return (1..5).map { feeling -> getEmoji(context, feeling) }
+    }
+    
+    /**
+     * 获取所有心情等级的文字标签列表
+     * @param context 上下文
+     * @return 标签列表 (索引0对应心情1)
+     */
+    fun getAllLabels(context: Context): List<String> {
+        return (1..5).map { feeling -> getLabel(context, feeling) }
     }
     
     /**
@@ -74,7 +95,17 @@ object EmojiConfig {
     }
     
     /**
-     * 重置所有emoji为默认值
+     * 设置指定心情等级的文字标签
+     * @param context 上下文
+     * @param feeling 心情等级 (1-5)
+     * @param label 新的文字标签
+     */
+    fun setLabel(context: Context, feeling: Int, label: String) {
+        getPrefs(context).edit().putString("label_$feeling", label).apply()
+    }
+    
+    /**
+     * 重置所有emoji和标签为默认值
      * @param context 上下文
      */
     fun resetToDefault(context: Context) {

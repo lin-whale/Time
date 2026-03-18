@@ -330,14 +330,17 @@ fun EmojiSettingsDialog(
     onEmojiChange: (feeling: Int, emoji: String) -> Unit,
     onReset: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    var currentLabels by remember { mutableStateOf(EmojiConfig.getAllLabels(context)) }
     var selectedFeeling by remember { mutableStateOf(1) }
-    val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
+    var editingLabel by remember { mutableStateOf(false) }
+    var labelText by remember { mutableStateOf("") }
     
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                text = "😊 心情表情设置",
+                text = "😊 心情设置",
                 fontWeight = FontWeight.Bold
             ) 
         },
@@ -357,17 +360,22 @@ fun EmojiSettingsDialog(
                 // 心情等级按钮行
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    feelingLabels.forEachIndexed { index, label ->
-                        val feeling = index + 1
+                    (1..5).forEach { feeling ->
                         val isSelected = selectedFeeling == feeling
+                        val index = feeling - 1
                         
                         FilterChip(
                             selected = isSelected,
                             onClick = { selectedFeeling = feeling },
                             label = { 
-                                Text("${currentEmojis[index]} $label") 
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(currentEmojis[index], fontSize = 18.sp)
+                                    Text(currentLabels[index], fontSize = 11.sp)
+                                }
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -376,18 +384,51 @@ fun EmojiSettingsDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 当前选中的emoji
+                // 当前选中项
+                val selectedIndex = selectedFeeling - 1
                 Text(
-                    text = "当前表情：${currentEmojis[selectedFeeling - 1]}",
+                    text = "当前：${currentEmojis[selectedIndex]} ${currentLabels[selectedIndex]}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // 可选emoji列表
+                // 文字标签编辑
                 Text(
-                    text = "选择新表情",
+                    text = "文字表述",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                OutlinedTextField(
+                    value = if (editingLabel) labelText else currentLabels[selectedIndex],
+                    onValueChange = { labelText = it },
+                    label = { Text("心情${selectedFeeling}级的文字") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (editingLabel && labelText.isNotBlank()) {
+                            IconButton(onClick = {
+                                val newLabels = currentLabels.toMutableList()
+                                newLabels[selectedIndex] = labelText
+                                currentLabels = newLabels
+                                EmojiConfig.setLabel(context, selectedFeeling, labelText)
+                                editingLabel = false
+                            }) {
+                                Icon(Icons.Default.Check, "保存")
+                            }
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Emoji选择
+                Text(
+                    text = "选择表情",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -396,7 +437,7 @@ fun EmojiSettingsDialog(
                 
                 // Emoji选择网格
                 LazyColumn(
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(150.dp)
                 ) {
                     items(EmojiConfig.AVAILABLE_EMOJIS.chunked(6)) { emojiRow ->
                         Row(
@@ -406,11 +447,11 @@ fun EmojiSettingsDialog(
                             emojiRow.forEach { emoji ->
                                 TextButton(
                                     onClick = { onEmojiChange(selectedFeeling, emoji) },
-                                    modifier = Modifier.size(48.dp)
+                                    modifier = Modifier.size(40.dp)
                                 ) {
                                     Text(
                                         text = emoji,
-                                        fontSize = 24.sp
+                                        fontSize = 20.sp
                                     )
                                 }
                             }

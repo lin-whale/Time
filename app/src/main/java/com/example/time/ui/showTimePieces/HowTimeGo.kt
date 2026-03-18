@@ -118,7 +118,7 @@ fun HowTimeGo(
 
     // 心情等级对应的表情（从配置读取）
     val feelingEmojis = remember { EmojiConfig.getAllEmojis(context) }
-    val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
+    val feelingLabels = remember { EmojiConfig.getAllLabels(context) }
     
     // 饼图点击处理：使用 CoroutineScope
     val coroutineScope = rememberCoroutineScope()
