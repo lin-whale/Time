@@ -5,6 +5,7 @@
  * 1. 主题切换入口
  * 2. 帮助文档入口
  * 3. 提交确认开关（控制新建事件时是否需要二次确认）
+ * 4. 心情Emoji设置
  */
 package com.example.time.ui.settings
 
@@ -14,6 +15,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.time.logic.utils.EmojiConfig
 import com.example.time.ui.activity.ThemeSelectionActivity
 
 /**
@@ -65,6 +69,10 @@ fun SettingsScreen(
     var requireSubmitConfirm by remember { 
         mutableStateOf(prefs.getBoolean("require_submit_confirm", true)) 
     }
+    
+    // Emoji设置对话框状态
+    var showEmojiSettings by remember { mutableStateOf(false) }
+    var currentEmojis by remember { mutableStateOf(EmojiConfig.getAllEmojis(context)) }
     
     // 主题选择 Activity launcher
     val themeActivityLauncher = rememberLauncherForActivityResult(
@@ -118,6 +126,18 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(8.dp))
             
+            // ===== 数据显示分组 =====
+            SettingGroupTitle(title = "数据显示")
+            
+            SettingNavigationCard(
+                title = "心情表情",
+                description = "自定义各心情等级的表情：${currentEmojis.joinToString(" ")}",
+                icon = "😊",
+                onClick = { showEmojiSettings = true }
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
             // ===== 行为设置分组 =====
             SettingGroupTitle(title = "行为")
             
@@ -144,6 +164,22 @@ fun SettingsScreen(
                 onClick = onShowHelp
             )
         }
+    }
+    
+    // ===== Emoji设置对话框 =====
+    if (showEmojiSettings) {
+        EmojiSettingsDialog(
+            currentEmojis = currentEmojis,
+            onDismiss = { showEmojiSettings = false },
+            onEmojiChange = { feeling, emoji ->
+                EmojiConfig.setEmoji(context, feeling, emoji)
+                currentEmojis = EmojiConfig.getAllEmojis(context)
+            },
+            onReset = {
+                EmojiConfig.resetToDefault(context)
+                currentEmojis = EmojiConfig.getAllEmojis(context)
+            }
+        )
     }
 }
 
@@ -281,4 +317,117 @@ fun SettingNavigationCard(
             )
         }
     }
+}
+
+/**
+ * 心情Emoji设置对话框
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EmojiSettingsDialog(
+    currentEmojis: List<String>,
+    onDismiss: () -> Unit,
+    onEmojiChange: (feeling: Int, emoji: String) -> Unit,
+    onReset: () -> Unit = {}
+) {
+    var selectedFeeling by remember { mutableStateOf(1) }
+    val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                text = "😊 心情表情设置",
+                fontWeight = FontWeight.Bold
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 当前心情等级选择
+                Text(
+                    text = "选择心情等级",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 心情等级按钮行
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    feelingLabels.forEachIndexed { index, label ->
+                        val feeling = index + 1
+                        val isSelected = selectedFeeling == feeling
+                        
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedFeeling = feeling },
+                            label = { 
+                                Text("${currentEmojis[index]} $label") 
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 当前选中的emoji
+                Text(
+                    text = "当前表情：${currentEmojis[selectedFeeling - 1]}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 可选emoji列表
+                Text(
+                    text = "选择新表情",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Emoji选择网格
+                LazyColumn(
+                    modifier = Modifier.height(200.dp)
+                ) {
+                    items(EmojiConfig.AVAILABLE_EMOJIS.chunked(6)) { emojiRow ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            emojiRow.forEach { emoji ->
+                                TextButton(
+                                    onClick = { onEmojiChange(selectedFeeling, emoji) },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Text(
+                                        text = emoji,
+                                        fontSize = 24.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("完成")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onReset) {
+                Text("重置默认")
+            }
+        }
+    )
 }

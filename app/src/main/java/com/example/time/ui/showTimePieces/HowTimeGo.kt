@@ -38,8 +38,8 @@ import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.logic.utils.convertTimeFormatSmart
+import com.example.time.logic.utils.EmojiConfig
 import com.example.time.ui.activity.ShowEventFeelingActivity
-import com.example.time.ui.theme.EmotionColors
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.*
@@ -116,8 +116,8 @@ fun HowTimeGo(
         )
     }
 
-    // 心情等级对应的表情
-    val feelingEmojis = listOf("😞", "😕", "😐", "😊", "😄")
+    // 心情等级对应的表情（从配置读取）
+    val feelingEmojis = remember { EmojiConfig.getAllEmojis(context) }
     val feelingLabels = listOf("很差", "较差", "一般", "较好", "很好")
     
     // 饼图点击处理：使用 CoroutineScope
@@ -723,6 +723,7 @@ private fun ExpandableFeelingCard(
                         TimePieceItemFeeling(
                             timePiece = piece,
                             color = color,
+                            feelingEmojis = feelingEmojis,
                             onClick = { /* 可以添加点击查看详情逻辑 */ }
                         )
                     }
@@ -755,6 +756,7 @@ private fun ExpandableFeelingCard(
 private fun TimePieceItemFeeling(
     timePiece: TimePiece,
     color: Color,
+    feelingEmojis: List<String>,
     onClick: () -> Unit
 ) {
     var isRecordExpanded by remember { mutableStateOf(false) }
@@ -829,7 +831,7 @@ private fun TimePieceItemFeeling(
             
             // 心情
             Text(
-                text = listOf("😞", "😕", "😐", "😊", "😄").getOrElse(timePiece.emotion - 1) { "😐" },
+                text = feelingEmojis.getOrElse(timePiece.emotion - 1) { "😐" },
                 fontSize = 20.sp
             )
         }
