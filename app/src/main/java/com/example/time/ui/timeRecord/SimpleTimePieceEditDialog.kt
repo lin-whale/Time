@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.logic.utils.convertTimeFormatSmart
+import com.example.time.ui.theme.ModernColors
 import kotlin.math.roundToLong
 
 /**
@@ -187,13 +189,19 @@ fun SimpleTimePieceEditDialog(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        // 上下调整按钮
-                        Row {
+                        // 调整按钮：1小时和5分钟
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { editedFromTime -= 60 * 60 * 1000 }) {
+                                Text("-1h", fontSize = 12.sp)
+                            }
+                            IconButton(onClick = { editedFromTime += 60 * 60 * 1000 }) {
+                                Text("+1h", fontSize = 12.sp)
+                            }
                             IconButton(onClick = { editedFromTime -= 5 * 60 * 1000 }) {
-                                Text("-5", fontSize = 14.sp)
+                                Text("-5m", fontSize = 12.sp)
                             }
                             IconButton(onClick = { editedFromTime += 5 * 60 * 1000 }) {
-                                Icon(Icons.Default.Add, "加5分钟", modifier = Modifier.size(16.dp))
+                                Text("+5m", fontSize = 12.sp)
                             }
                         }
                     }
@@ -208,13 +216,19 @@ fun SimpleTimePieceEditDialog(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        // 上下调整按钮
-                        Row {
+                        // 调整按钮：1小时和5分钟
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { editedToTime -= 60 * 60 * 1000 }) {
+                                Text("-1h", fontSize = 12.sp)
+                            }
+                            IconButton(onClick = { editedToTime += 60 * 60 * 1000 }) {
+                                Text("+1h", fontSize = 12.sp)
+                            }
                             IconButton(onClick = { editedToTime -= 5 * 60 * 1000 }) {
-                                Text("-5", fontSize = 14.sp)
+                                Text("-5m", fontSize = 12.sp)
                             }
                             IconButton(onClick = { editedToTime += 5 * 60 * 1000 }) {
-                                Icon(Icons.Default.Add, "加5分钟", modifier = Modifier.size(16.dp))
+                                Text("+5m", fontSize = 12.sp)
                             }
                         }
                     }
@@ -266,6 +280,44 @@ fun SimpleTimePieceEditDialog(
                     label = { Text("子事件") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // ===== 体验等级编辑 =====
+                Text("体验等级", fontSize = 14.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(5) { index ->
+                        val isSelected = index < editedEmotion
+                        IconButton(
+                            onClick = { editedEmotion = index + 1 },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = "${index + 1}星",
+                                tint = if (isSelected) ModernColors.getEmotionColor(editedEmotion) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // ===== 体验记录编辑 =====
+                OutlinedTextField(
+                    value = editedRecord,
+                    onValueChange = { editedRecord = it },
+                    label = { Text("体验记录") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
