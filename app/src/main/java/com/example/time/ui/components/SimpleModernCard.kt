@@ -76,7 +76,7 @@ fun SimpleModernCard(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    maxLines = if (expanded) 100 else 2,
                     overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis
                 )
                 
