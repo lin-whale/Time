@@ -107,6 +107,7 @@ dependencies {
     implementation("com.maxkeppeler.sheets-compose-dialogs:core:1.2.0")
     implementation("com.maxkeppeler.sheets-compose-dialogs:calendar:1.2.0")
     implementation("com.github.jeziellago:compose-markdown:0.4.1")
+    implementation("androidx.compose.material:material-icons-extended")
 //    implementation("androidx.room:room-ktx:$roomVersion")
 //    ksp("androidx.room:room-compiler:$room_version")
 //    ksp("androidx.room:room-compiler:2.6.1")
