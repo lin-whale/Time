@@ -177,60 +177,85 @@ fun SimpleTimePieceEditDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // ===== 时间调整控件 =====
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // 开始时间
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("开始时间", fontSize = 12.sp, color = Color.Gray)
-                        Text(
-                            convertTimeFormatSmart(editedFromTime, "M/d HH:mm"),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        // 调整按钮：1小时和5分钟
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { editedFromTime -= 60 * 60 * 1000 }) {
-                                Text("-1h", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedFromTime += 60 * 60 * 1000 }) {
-                                Text("+1h", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedFromTime -= 5 * 60 * 1000 }) {
-                                Text("-5m", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedFromTime += 5 * 60 * 1000 }) {
-                                Text("+5m", fontSize = 12.sp)
-                            }
-                        }
+                // 开始时间
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("开始时间", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        convertTimeFormatSmart(editedFromTime, "M月d日 HH:mm"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // 分两行：小时和分钟
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { editedFromTime -= 60 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("-1小时") }
+                        OutlinedButton(
+                            onClick = { editedFromTime += 60 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+1小时") }
                     }
-                    
-                    Icon(Icons.Default.ArrowForward, null, modifier = Modifier.align(Alignment.CenterVertically))
-                    
-                    // 结束时间
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text("结束时间", fontSize = 12.sp, color = Color.Gray)
-                        Text(
-                            convertTimeFormatSmart(editedToTime, "M/d HH:mm"),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        // 调整按钮：1小时和5分钟
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { editedToTime -= 60 * 60 * 1000 }) {
-                                Text("-1h", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedToTime += 60 * 60 * 1000 }) {
-                                Text("+1h", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedToTime -= 5 * 60 * 1000 }) {
-                                Text("-5m", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { editedToTime += 5 * 60 * 1000 }) {
-                                Text("+5m", fontSize = 12.sp)
-                            }
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { editedFromTime -= 5 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("-5分钟") }
+                        OutlinedButton(
+                            onClick = { editedFromTime += 5 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+5分钟") }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 结束时间
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text("结束时间", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        convertTimeFormatSmart(editedToTime, "M月d日 HH:mm"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // 分两行：小时和分钟
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { editedToTime -= 60 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("-1小时") }
+                        OutlinedButton(
+                            onClick = { editedToTime += 60 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+1小时") }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { editedToTime -= 5 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("-5分钟") }
+                        OutlinedButton(
+                            onClick = { editedToTime += 5 * 60 * 1000 },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+5分钟") }
                     }
                 }
                 
