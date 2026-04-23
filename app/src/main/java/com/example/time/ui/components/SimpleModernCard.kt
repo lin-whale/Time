@@ -1,17 +1,26 @@
 /**
- * Simple Modern Card - 简化版现代化卡片（无动画）
+ * Simple Modern Card - 简化版现代化卡片（支持展开/折叠）
  * 支持深色模式
  */
 package com.example.time.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -23,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.logic.utils.convertTimeFormatSmart
+import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.ui.theme.ModernColors
 import kotlin.math.roundToInt
 
@@ -32,12 +42,13 @@ fun SimpleModernCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val emotionColor = ModernColors.getEmotionColor(timePiece.emotion)
     
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(if onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -65,8 +76,8 @@ fun SimpleModernCard(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -94,17 +105,57 @@ fun SimpleModernCard(
                     }
                 }
                 
-                // 备注
-                if (timePiece.lastTimeRecord.isNotEmpty()) {
+                // 展开/折叠内容
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Column {
+                        // 时长
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "⏱ 时长：${convertDurationFormat(timePiece.timePoint - timePiece.fromTimePoint, "%d时%d分")}",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        // 备注（完整显示）
+                        if (timePiece.lastTimeRecord.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "💭 ${timePiece.lastTimeRecord}",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // 备注（折叠时只显示一行）
+                if (!expanded && timePiece.lastTimeRecord.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "💭 ${timePiece.lastTimeRecord}",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+            
+            // 展开/折叠按钮
+            IconButton(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }
