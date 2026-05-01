@@ -194,11 +194,18 @@ fun SimpleTimePieceEditDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { editedFromTime -= 60 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedFromTime - 60 * 60 * 1000
+                                editedFromTime = newTime
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("-1小时") }
                         OutlinedButton(
-                            onClick = { editedFromTime += 60 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedFromTime + 60 * 60 * 1000
+                                // 限制不超过当前时间
+                                editedFromTime = minOf(newTime, System.currentTimeMillis())
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("+1小时") }
                     }
@@ -207,11 +214,18 @@ fun SimpleTimePieceEditDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { editedFromTime -= 5 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedFromTime - 5 * 60 * 1000
+                                editedFromTime = newTime
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("-5分钟") }
                         OutlinedButton(
-                            onClick = { editedFromTime += 5 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedFromTime + 5 * 60 * 1000
+                                // 限制不超过当前时间
+                                editedFromTime = minOf(newTime, System.currentTimeMillis())
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("+5分钟") }
                     }
@@ -236,11 +250,18 @@ fun SimpleTimePieceEditDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { editedToTime -= 60 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedToTime - 60 * 60 * 1000
+                                editedToTime = newTime
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("-1小时") }
                         OutlinedButton(
-                            onClick = { editedToTime += 60 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedToTime + 60 * 60 * 1000
+                                // 限制不超过当前时间
+                                editedToTime = minOf(newTime, System.currentTimeMillis())
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("+1小时") }
                     }
@@ -249,13 +270,42 @@ fun SimpleTimePieceEditDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { editedToTime -= 5 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedToTime - 5 * 60 * 1000
+                                editedToTime = newTime
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("-5分钟") }
                         OutlinedButton(
-                            onClick = { editedToTime += 5 * 60 * 1000 },
+                            onClick = { 
+                                val newTime = editedToTime + 5 * 60 * 1000
+                                // 限制不超过当前时间
+                                editedToTime = minOf(newTime, System.currentTimeMillis())
+                            },
                             modifier = Modifier.weight(1f)
                         ) { Text("+5分钟") }
+                    }
+                    // 设为当前时间快捷按钮
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val currentTime = System.currentTimeMillis()
+                                // 只有当当前时间大于开始时间时才允许设置
+                                if (currentTime > editedFromTime) {
+                                    editedToTime = currentTime
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = "📍 设为当前时间",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
                 

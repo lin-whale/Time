@@ -185,6 +185,30 @@ fun TimePieceEditDialog(
                             )
                         }
                         
+                        // 设为当前时间快捷按钮
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    val currentTime = System.currentTimeMillis()
+                                    // 只有当当前时间大于开始时间时才允许设置
+                                    if (currentTime > editedFromTime) {
+                                        editedToTime = currentTime
+                                    }
+                                },
+                                modifier = Modifier.padding(end = 0.dp)
+                            ) {
+                                Text(
+                                    text = "设为当前时间",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                        
                         // 时长显示
                         Spacer(modifier = Modifier.height(8.dp))
                         val durationMinutes = (editedToTime - editedFromTime) / 60000
@@ -353,16 +377,17 @@ fun TimePieceEditDialog(
     }
     
     // 结束时间选择器
-    // 范围更宽松：允许在当前结束时间前后各2小时内调整
+    // 范围更宽松：允许在当前结束时间前后各2小时内调整，但不能超过当前时间
     if (isEditingToTime) {
         val baseToTime = if (editedToTime > 0) editedToTime else editedFromTime + 60 * 60 * 1000L
         val toTimeMin = maxOf(0L, baseToTime - 2 * 60 * 60 * 1000L)
-        val toTimeMax = baseToTime + 2 * 60 * 60 * 1000L
+        // 限制最大时间不超过当前时间
+        val toTimeMax = minOf(baseToTime + 2 * 60 * 60 * 1000L, System.currentTimeMillis())
         
         TimePickerDialog(
             latestTime = toTimeMin,
             maxTime = toTimeMax,
-            initialTime = baseToTime,
+            initialTime = minOf(baseToTime, System.currentTimeMillis()),
             onTimeSelected = { newTime ->
                 editedToTime = newTime
                 isEditingToTime = false
