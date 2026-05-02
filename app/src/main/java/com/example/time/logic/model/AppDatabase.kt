@@ -1,6 +1,7 @@
 package com.example.time.logic.model
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -25,7 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun lifePieceDao(): LifePieceDao
 
     companion object {
-
+        private const val TAG = "AppDatabase"
         private var INSTANCE: AppDatabase? = null
 
         @Synchronized
@@ -38,6 +39,8 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addCallback(AppDatabaseCallback(scope))
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    // 如果迁移失败，允许重建数据库（防止崩溃）
+                    .fallbackToDestructiveMigration()
                     .build()
                 AppDatabase.INSTANCE = instance
                 instance
@@ -49,10 +52,16 @@ abstract class AppDatabase : RoomDatabase() {
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "CREATE TABLE IF NOT EXISTS LifePiece " +
-                            "(id INTEGER PRIMARY KEY autoincrement not null, lifePiece TEXT)"
-                )
+                try {
+                    database.execSQL(
+                        "CREATE TABLE IF NOT EXISTS LifePiece " +
+                                "(id INTEGER PRIMARY KEY autoincrement not null, lifePiece TEXT)"
+                    )
+                    Log.d(TAG, "Migration 1->2 successful")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Migration 1->2 failed: ${e.message}")
+                    throw e
+                }
             }
         }
 
@@ -61,10 +70,29 @@ abstract class AppDatabase : RoomDatabase() {
          */
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // 添加 mediaPaths 字段，默认值为空JSON数组
-                database.execSQL(
-                    "ALTER TABLE TimePiece ADD COLUMN mediaPaths TEXT NOT NULL DEFAULT '[]'"
-                )
+                try {
+                    // 检查列是否已存在
+                    val cursor = database.query("PRAGMA table_info(TimePiece)")
+                    var columnExists = false
+                    while (cursor.moveToNext()) {
+                        val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                        if (columnName == "mediaPaths") {
+                            columnExists = true
+                            break
+                        }
+                    }
+                    cursor.close()
+                    
+                    if (!columnExists) {
+                        database.execSQL(
+                            "ALTER TABLE TimePiece ADD COLUMN mediaPaths TEXT NOT NULL DEFAULT '[]'"
+                        )
+                    }
+                    Log.d(TAG, "Migration 2->3 successful")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Migration 2->3 failed: ${e.message}")
+                    throw e
+                }
             }
         }
     }

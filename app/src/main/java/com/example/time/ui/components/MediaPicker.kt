@@ -327,22 +327,27 @@ fun AddMediaButton(
  * 解析媒体信息
  */
 fun parseMediaInfo(context: Context, path: String): MediaInfo {
-    val extension = path.substringAfterLast(".").lowercase()
-    val fileName = path.substringAfterLast("/")
-    
-    return when {
-        extension == "gif" -> MediaInfo(path, MediaType.GIF)
-        extension in listOf("mp4", "3gp", "webm", "mkv", "mov") -> {
-            // 获取视频时长
-            val duration = getVideoDuration(context, path)
-            MediaInfo(path, MediaType.VIDEO, duration)
+    return try {
+        val extension = path.substringAfterLast(".").lowercase()
+        val fileName = path.substringAfterLast("/")
+        
+        when {
+            extension == "gif" -> MediaInfo(path, MediaType.GIF)
+            extension in listOf("mp4", "3gp", "webm", "mkv", "mov") -> {
+                // 获取视频时长
+                val duration = getVideoDuration(context, path)
+                MediaInfo(path, MediaType.VIDEO, duration)
+            }
+            // 尝试从文件名判断是否为实况图（iOS Live Photo）
+            fileName.contains("live", ignoreCase = true) || 
+            fileName.contains("motion", ignoreCase = true) -> {
+                MediaInfo(path, MediaType.VIDEO, getVideoDuration(context, path))
+            }
+            else -> MediaInfo(path, MediaType.IMAGE)
         }
-        // 尝试从文件名判断是否为实况图（iOS Live Photo）
-        fileName.contains("live", ignoreCase = true) || 
-        fileName.contains("motion", ignoreCase = true) -> {
-            MediaInfo(path, MediaType.VIDEO, getVideoDuration(context, path))
-        }
-        else -> MediaInfo(path, MediaType.IMAGE)
+    } catch (e: Exception) {
+        // 发生错误时默认当作图片处理
+        MediaInfo(path, MediaType.IMAGE)
     }
 }
 

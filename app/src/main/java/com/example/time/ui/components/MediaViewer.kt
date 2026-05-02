@@ -217,27 +217,34 @@ fun ImageMediaViewer(mediaInfo: MediaInfo) {
 fun VideoMediaViewer(mediaInfo: MediaInfo) {
     val context = LocalContext.current
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
+    var isError by remember { mutableStateOf(false) }
     
     // 创建播放器
     LaunchedEffect(mediaInfo.path) {
-        val player = ExoPlayer.Builder(context).build()
-        val mediaItem = if (mediaInfo.path.startsWith("/")) {
-            MediaItem.fromUri(Uri.fromFile(java.io.File(mediaInfo.path)))
-        } else {
-            MediaItem.fromUri(Uri.parse(mediaInfo.path))
+        try {
+            val player = ExoPlayer.Builder(context).build()
+            val mediaItem = if (mediaInfo.path.startsWith("/")) {
+                MediaItem.fromUri(Uri.fromFile(java.io.File(mediaInfo.path)))
+            } else {
+                MediaItem.fromUri(Uri.parse(mediaInfo.path))
+            }
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.playWhenReady = true
+            exoPlayer = player
+        } catch (e: Exception) {
+            isError = true
         }
-        player.setMediaItem(mediaItem)
-        player.prepare()
-        player.playWhenReady = true
-        exoPlayer = player
-        isPlaying = true
     }
     
     // 释放播放器
     DisposableEffect(Unit) {
         onDispose {
-            exoPlayer?.release()
+            try {
+                exoPlayer?.release()
+            } catch (e: Exception) {
+                // ignore
+            }
         }
     }
     
@@ -245,41 +252,53 @@ fun VideoMediaViewer(mediaInfo: MediaInfo) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        exoPlayer?.let { player ->
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        this.player = player
-                        useController = true
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-            
-            // 视频时长显示
-            if (mediaInfo.duration > 0) {
-                Text(
-                    text = formatDuration(mediaInfo.duration),
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        } ?: run {
-            // 加载中
+        if (isError) {
             Text(
-                text = "🎬 加载视频中...",
+                text = "🎬 无法播放视频",
                 color = Color.Gray,
                 fontSize = 16.sp
             )
+        } else {
+            exoPlayer?.let { player ->
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            try {
+                                this.player = player
+                                useController = true
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+                
+                // 视频时长显示
+                if (mediaInfo.duration > 0) {
+                    Text(
+                        text = formatDuration(mediaInfo.duration),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            } ?: run {
+                // 加载中
+                Text(
+                    text = "🎬 加载视频中...",
+                    color = Color.Gray,
+                    fontSize = 16.sp
+                )
+            }
         }
     }
 }
