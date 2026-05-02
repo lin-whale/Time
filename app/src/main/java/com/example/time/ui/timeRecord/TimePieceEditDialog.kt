@@ -331,7 +331,7 @@ fun TimePieceEditDialog(
                             )
                             if (editedMediaPaths.isNotEmpty()) {
                                 Text(
-                                    text = "${editedMediaPaths.size}张",
+                                    text = "${editedMediaPaths.size}个",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 )

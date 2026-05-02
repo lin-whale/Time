@@ -108,6 +108,14 @@ dependencies {
     implementation("com.maxkeppeler.sheets-compose-dialogs:calendar:1.2.0")
     implementation("com.github.jeziellago:compose-markdown:0.4.1")
     implementation("androidx.compose.material:material-icons-extended")
+    
+    // 视频播放 - ExoPlayer (Media3)
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-ui:1.2.1")
+    
+    // GIF 支持 - Coil
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-gif:2.5.0")
 //    implementation("androidx.room:room-ktx:$roomVersion")
 //    ksp("androidx.room:room-compiler:$room_version")
 //    ksp("androidx.room:room-compiler:2.6.1")

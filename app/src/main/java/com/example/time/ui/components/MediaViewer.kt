@@ -2,14 +2,17 @@
  * 媒体查看器组件
  * 
  * 功能说明：
- * - 全屏查看图片
+ * - 全屏查看图片/GIF
+ * - 播放视频
  * - 支持左右滑动切换
- * - 显示图片序号
+ * - 显示媒体序号
  */
 package com.example.time.ui.components
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.view.ViewGroup
+import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -33,15 +37,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 
 /**
  * 全屏媒体查看器
- * 
- * @param mediaPaths 媒体路径列表
- * @param initialIndex 初始显示的索引
- * @param onDismiss 关闭回调
  */
 @Composable
 fun MediaViewer(
@@ -51,6 +55,11 @@ fun MediaViewer(
 ) {
     val context = LocalContext.current
     var currentIndex by remember { mutableStateOf(initialIndex.coerceIn(0, (mediaPaths.size - 1).coerceAtLeast(0))) }
+    
+    // 解析媒体信息
+    val mediaInfos = remember(mediaPaths) {
+        mediaPaths.map { path -> parseMediaInfo(context, path) }
+    }
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -66,18 +75,8 @@ fun MediaViewer(
                     detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
                         when {
-                            dragAmount > 50 -> {
-                                // 向右滑动，显示上一张
-                                if (currentIndex > 0) {
-                                    currentIndex -= 1
-                                }
-                            }
-                            dragAmount < -50 -> {
-                                // 向左滑动，显示下一张
-                                if (currentIndex < mediaPaths.size - 1) {
-                                    currentIndex += 1
-                                }
-                            }
+                            dragAmount > 50 && currentIndex > 0 -> currentIndex -= 1
+                            dragAmount < -50 && currentIndex < mediaPaths.size - 1 -> currentIndex += 1
                         }
                     }
                 }
@@ -91,7 +90,6 @@ fun MediaViewer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 返回按钮
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
@@ -100,7 +98,6 @@ fun MediaViewer(
                     )
                 }
                 
-                // 序号显示
                 if (mediaPaths.isNotEmpty()) {
                     Text(
                         text = "${currentIndex + 1} / ${mediaPaths.size}",
@@ -110,27 +107,12 @@ fun MediaViewer(
                     )
                 }
                 
-                // 占位，保持两端对称
                 Spacer(modifier = Modifier.size(48.dp))
             }
             
-            // 图片显示
-            if (mediaPaths.isNotEmpty()) {
-                val path = mediaPaths[currentIndex]
-                val bitmap = remember(path) {
-                    try {
-                        if (path.startsWith("/")) {
-                            BitmapFactory.decodeFile(path)
-                        } else {
-                            val inputStream = context.contentResolver.openInputStream(Uri.parse(path))
-                            BitmapFactory.decodeStream(inputStream).also {
-                                inputStream?.close()
-                            }
-                        }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
+            // 媒体显示
+            if (mediaPaths.isNotEmpty() && currentIndex in mediaInfos.indices) {
+                val mediaInfo = mediaInfos[currentIndex]
                 
                 Box(
                     modifier = Modifier
@@ -138,23 +120,17 @@ fun MediaViewer(
                         .padding(top = 60.dp, bottom = 60.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    bitmap?.let {
-                        Image(
-                            bitmap = it.asImageBitmap(),
-                            contentDescription = "媒体${currentIndex + 1}",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    } ?: run {
-                        Text(
-                            text = "📷 无法加载图片",
-                            color = Color.Gray,
-                            fontSize = 16.sp
-                        )
+                    when (mediaInfo.type) {
+                        MediaType.IMAGE, MediaType.GIF -> {
+                            ImageMediaViewer(mediaInfo = mediaInfo)
+                        }
+                        MediaType.VIDEO -> {
+                            VideoMediaViewer(mediaInfo = mediaInfo)
+                        }
                     }
                 }
                 
-                // 左右切换指示
+                // 底部指示器
                 if (mediaPaths.size > 1) {
                     Row(
                         modifier = Modifier
@@ -181,6 +157,134 @@ fun MediaViewer(
 }
 
 /**
+ * 图片/GIF 查看器
+ */
+@Composable
+fun ImageMediaViewer(mediaInfo: MediaInfo) {
+    val context = LocalContext.current
+    val bitmap = remember(mediaInfo.path) {
+        try {
+            if (mediaInfo.path.startsWith("/")) {
+                BitmapFactory.decodeFile(mediaInfo.path)
+            } else {
+                val inputStream = context.contentResolver.openInputStream(Uri.parse(mediaInfo.path))
+                BitmapFactory.decodeStream(inputStream).also {
+                    inputStream?.close()
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        bitmap?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "图片",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+            
+            // GIF 标签
+            if (mediaInfo.type == MediaType.GIF) {
+                Text(
+                    text = "GIF",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } ?: Text(
+            text = "📷 无法加载图片",
+            color = Color.Gray,
+            fontSize = 16.sp
+        )
+    }
+}
+
+/**
+ * 视频播放器
+ */
+@Composable
+fun VideoMediaViewer(mediaInfo: MediaInfo) {
+    val context = LocalContext.current
+    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
+    
+    // 创建播放器
+    LaunchedEffect(mediaInfo.path) {
+        val player = ExoPlayer.Builder(context).build()
+        val mediaItem = if (mediaInfo.path.startsWith("/")) {
+            MediaItem.fromUri(Uri.fromFile(java.io.File(mediaInfo.path)))
+        } else {
+            MediaItem.fromUri(Uri.parse(mediaInfo.path))
+        }
+        player.setMediaItem(mediaItem)
+        player.prepare()
+        player.playWhenReady = true
+        exoPlayer = player
+        isPlaying = true
+    }
+    
+    // 释放播放器
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer?.release()
+        }
+    }
+    
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        exoPlayer?.let { player ->
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        this.player = player
+                        useController = true
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // 视频时长显示
+            if (mediaInfo.duration > 0) {
+                Text(
+                    text = formatDuration(mediaInfo.duration),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } ?: run {
+            // 加载中
+            Text(
+                text = "🎬 加载视频中...",
+                color = Color.Gray,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+/**
  * 简单的媒体预览组件（显示在卡片中）
  */
 @Composable
@@ -191,6 +295,7 @@ fun MediaPreviewRow(
 ) {
     if (mediaPaths.isEmpty()) return
     
+    val context = LocalContext.current
     val visibleCount = minOf(mediaPaths.size, maxVisible)
     
     Row(
@@ -198,13 +303,14 @@ fun MediaPreviewRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         mediaPaths.take(visibleCount).forEachIndexed { index, path ->
+            val mediaInfo = remember(path) { parseMediaInfo(context, path) }
             SmallMediaThumbnail(
-                path = path,
+                mediaInfo = mediaInfo,
                 onClick = { onMediaClick(index) }
             )
         }
         
-        // 如果有更多图片，显示数量提示
+        // 更多数量提示
         if (mediaPaths.size > maxVisible) {
             Box(
                 modifier = Modifier
@@ -225,40 +331,79 @@ fun MediaPreviewRow(
 
 @Composable
 fun SmallMediaThumbnail(
-    path: String,
+    mediaInfo: MediaInfo,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val bitmap = remember(path) {
-        try {
-            if (path.startsWith("/")) {
-                BitmapFactory.decodeFile(path)
-            } else {
-                val inputStream = context.contentResolver.openInputStream(Uri.parse(path))
-                BitmapFactory.decodeStream(inputStream).also {
-                    inputStream?.close()
-                }
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
     
     Box(
         modifier = Modifier
             .size(60.dp)
-         .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(Color.Gray.copy(alpha = 0.2f))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        bitmap?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } ?: Text("📷", fontSize = 16.sp)
+        when (mediaInfo.type) {
+            MediaType.IMAGE, MediaType.GIF -> {
+                val bitmap = remember(mediaInfo.path) {
+                    try {
+                        if (mediaInfo.path.startsWith("/")) {
+                            BitmapFactory.decodeFile(mediaInfo.path)
+                        } else {
+                            val inputStream = context.contentResolver.openInputStream(Uri.parse(mediaInfo.path))
+                     BitmapFactory.decodeStream(inputStream).also {
+                                inputStream?.close()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                
+                bitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } ?: Text("📷", fontSize = 16.sp)
+                
+                if (mediaInfo.type == MediaType.GIF) {
+                    Text(
+                        text = "GIF",
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(2.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                            .padding(horizontal = 3.dp, vertical = 1.dp)
+                    )
+                }
+            }
+            MediaType.VIDEO -> {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "视频",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                if (mediaInfo.duration > 0) {
+                    Text(
+                        text = formatDuration(mediaInfo.duration),
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(2.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                            .padding(horizontal = 3.dp, vertical = 1.dp)
+                    )
+                }
+            }
+        }
     }
 }
