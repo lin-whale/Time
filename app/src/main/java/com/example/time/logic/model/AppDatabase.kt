@@ -11,41 +11,14 @@ import com.example.time.logic.dao.TimePieceDao
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-//@Database(version = 2, entities = [TimePiece::class, LifePiece::class], exportSchema = false)
-//abstract class AppDatabase : RoomDatabase() {
-//
-//    abstract fun timePieceDao(): TimePieceDao
-//    abstract fun lifePieceDao(): LifePieceDao
-//
-//    companion object {
-//
-//        private var instance: AppDatabase? = null
-//
-//        @Synchronized
-//        fun getDatabase(context: Context): AppDatabase {
-//            instance?.let {
-//                return it
-//            }
-//            return Room.databaseBuilder(context.applicationContext,
-//                AppDatabase::class.java, "app_database")
-//                .addMigrations(MIGRATION_1_2)
-//                .build().apply {
-//                    instance = this
-//                }
-//        }
-//
-//        private val MIGRATION_1_2 = object : Migration(1, 2) {
-//            override fun migrate(database: SupportSQLiteDatabase) {
-//                database.execSQL(
-//                    "CREATE TABLE IF NOT EXISTS LifePiece " +
-//                            "(id INTEGER PRIMARY KEY autoincrement not null, lifePiece TEXT)")
-//            }
-//        }
-//    }
-//
-//}
-
-@Database(version = 2, entities = [TimePiece::class, LifePiece::class], exportSchema = false)
+/**
+ * 应用数据库
+ * 
+ * version 3: 添加 TimePiece.mediaPaths 字段支持媒体附件
+ * version 2: 添加 LifePiece 表
+ * version 1: 初始版本，TimePiece 表
+ */
+@Database(version = 3, entities = [TimePiece::class, LifePiece::class], exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun timePieceDao(): TimePieceDao
@@ -63,19 +36,35 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    .addCallback(AppDatabase.AppDatabaseCallback(scope))
+                    .addCallback(AppDatabaseCallback(scope))
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 AppDatabase.INSTANCE = instance
-                // return instance
                 instance
             }
         }
 
+        /**
+         * 版本1→2迁移：添加 LifePiece 表
+         */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "CREATE TABLE IF NOT EXISTS LifePiece " +
-                            "(id INTEGER PRIMARY KEY autoincrement not null, lifePiece TEXT)")
+                            "(id INTEGER PRIMARY KEY autoincrement not null, lifePiece TEXT)"
+                )
+            }
+        }
+
+        /**
+         * 版本2→3迁移：添加 TimePiece.mediaPaths 字段
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 添加 mediaPaths 字段，默认值为空JSON数组
+                database.execSQL(
+                    "ALTER TABLE TimePiece ADD COLUMN mediaPaths TEXT NOT NULL DEFAULT '[]'"
+                )
             }
         }
     }
@@ -93,16 +82,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        suspend fun populateDatabase(timePieceDao: TimePieceDao ,lifePieceDao: LifePieceDao) {
-//            // Delete all content here.
-//            wordDao.deleteAll()
+        suspend fun populateDatabase(timePieceDao: TimePieceDao, lifePieceDao: LifePieceDao) {
             val timePiece = TimePiece(
-                timePoint = System.currentTimeMillis(), fromTimePoint = System.currentTimeMillis(),
-                emotion = 3, lastTimeRecord = " ",
-                mainEvent = "开始记录生命体验吧~", subEvent = ""
+                timePoint = System.currentTimeMillis(), 
+                fromTimePoint = System.currentTimeMillis(),
+                emotion = 3, 
+                lastTimeRecord = " ",
+                mainEvent = "开始记录生命体验吧~", 
+                subEvent = ""
             )
             timePieceDao.insert(timePiece)
-            // TODO: Add your own words!
         }
     }
 }

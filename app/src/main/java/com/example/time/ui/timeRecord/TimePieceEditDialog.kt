@@ -35,6 +35,8 @@ import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.theme.EmotionColors
+import com.example.time.ui.components.MediaPicker
+import com.example.time.ui.components.MediaViewer
 
 /**
  * 时间片段编辑对话框
@@ -66,6 +68,9 @@ fun TimePieceEditDialog(
     var editedFromTime by remember { mutableStateOf(timePiece.fromTimePoint) }
     var editedToTime by remember { mutableStateOf(timePiece.timePoint) }
     
+    // 媒体附件编辑状态
+    var editedMediaPaths by remember { mutableStateOf(timePiece.getMediaList()) }
+    
     // 时间选择器状态
     var isEditingFromTime by remember { mutableStateOf(false) }
     var isEditingToTime by remember { mutableStateOf(false) }
@@ -75,6 +80,10 @@ fun TimePieceEditDialog(
     
     // 插入新片段对话框
     var showInsertDialog by remember { mutableStateOf(false) }
+    
+    // 媒体查看器
+    var showMediaViewer by remember { mutableStateOf(false) }
+    var mediaViewerIndex by remember { mutableStateOf(0) }
     
     Dialog(onDismissRequest = onCancel) {
         Card(
@@ -298,6 +307,54 @@ fun TimePieceEditDialog(
                     maxLines = 4
                 )
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // ===== 媒体附件 =====
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📷 媒体附件",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (editedMediaPaths.isNotEmpty()) {
+                                Text(
+                                    text = "${editedMediaPaths.size}张",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        MediaPicker(
+                            mediaPaths = editedMediaPaths,
+                            onMediaAdded = { path ->
+                                if (editedMediaPaths.size < 9) {
+                                    editedMediaPaths = editedMediaPaths + path
+                                }
+                            },
+                            onMediaRemoved = { path ->
+                                editedMediaPaths = editedMediaPaths - path
+                            },
+                            maxMedia = 9
+                        )
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // ===== 插入新片段按钮 =====
@@ -332,7 +389,7 @@ fun TimePieceEditDialog(
                             val finalFromTime = minOf(editedFromTime, editedToTime - 60 * 1000L)
                             val finalToTime = maxOf(editedToTime, editedFromTime + 60 * 1000L)
                             
-                            // 构建修改后的TimePiece
+                            // 构建修改后的TimePiece（包含媒体附件）
                             val updatedPiece = timePiece.copy(
                                 mainEvent = editedMainEvent,
                                 subEvent = editedSubEvent,
@@ -341,6 +398,8 @@ fun TimePieceEditDialog(
                                 fromTimePoint = finalFromTime,
                                 timePoint = finalToTime
                             )
+                            // 设置媒体附件
+                            updatedPiece.setMediaList(editedMediaPaths)
                             onSave(updatedPiece)
                         },
                         modifier = Modifier.weight(1f),
