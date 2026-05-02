@@ -3,23 +3,23 @@
  * 
  * 功能说明：
  * - 全屏查看图片
- * - 支持缩放和滑动切换
+ * - 支持滑动切换
  * - 显示图片序号
  */
 package com.example.time.ui.components
 
 import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -44,7 +44,6 @@ import androidx.compose.ui.window.DialogProperties
  * @param initialIndex 初始显示的索引
  * @param onDismiss 关闭回调
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaViewer(
     mediaPaths: List<String>,
@@ -53,11 +52,8 @@ fun MediaViewer(
 ) {
     val context = LocalContext.current
     
-    // 分页状态
-    val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, (mediaPaths.size - 1).coerceAtLeast(0)),
-        pageCount = { mediaPaths.size }
-    )
+    // 当前显示的索引
+    var currentIndex by remember { mutableStateOf(initialIndex.coerceIn(0, (mediaPaths.size - 1).coerceAtLeast(0))) }
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -82,7 +78,7 @@ fun MediaViewer(
                 // 返回按钮
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Icons.Default.ArrowBack,
                         contentDescription = "返回",
                         tint = Color.White
                     )
@@ -90,7 +86,7 @@ fun MediaViewer(
                 
                 // 序号显示
                 Text(
-                    text = "${pagerState.currentPage + 1} / ${mediaPaths.size}",
+                    text = "${currentIndex + 1} / ${mediaPaths.size}",
                     color = Color.White,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
@@ -100,47 +96,77 @@ fun MediaViewer(
                 Spacer(modifier = Modifier.size(48.dp))
             }
             
-            // 图片滑动器
+            // 图片显示
             if (mediaPaths.isNotEmpty()) {
-                HorizontalPager(
-                    state = pagerState,
+                val path = mediaPaths[currentIndex]
+                val bitmap = remember(path) {
+                    try {
+                        if (path.startsWith("/")) {
+                            BitmapFactory.decodeFile(path)
+                        } else {
+                            val inputStream = context.contentResolver.openInputStream(Uri.parse(path))
+                            BitmapFactory.decodeStream(inputStream).also {
+                                inputStream?.close()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 60.dp, bottom = 60.dp)
-                ) { page ->
-                    val path = mediaPaths[page]
-                    val bitmap = remember(path) {
-                        try {
-                            if (path.startsWith("/")) {
-                                BitmapFactory.decodeFile(path)
-                            } else {
-                                val inputStream = context.contentResolver.openInputStream(Uri.parse(path))
-                                BitmapFactory.decodeStream(inputStream).also {
-                                    inputStream?.close()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            null
+                        .padding(top = 60.dp, bottom = 60.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    bitmap?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "媒体${currentIndex + 1}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    } ?: run {
+                        Text(
+                            text = "📷 无法加载图片",
+                            color = Color.Gray,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+                
+                // 左右滑动切换按钮
+                if (mediaPaths.size > 1) {
+                    // 上一张按钮
+                    if (currentIndex > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 8.dp)
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White.copy(alpha = 0.3f))
+                                .clickable { currentIndex-- },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("◀", color = Color.White, fontSize = 20.sp)
                         }
                     }
                     
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        bitmap?.let {
-                            Image(
-                                bitmap = it.asImageBitmap(),
-                                contentDescription = "媒体${page + 1}",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        } ?: run {
-                            Text(
-                                text = "📷 无法加载图片",
-                                color = Color.Gray,
-                                fontSize = 16.sp
-                            )
+                    // 下一张按钮
+                    if (currentIndex < mediaPaths.size - 1) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 8.dp)
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White.copy(alpha = 0.3f))
+                                .clickable { currentIndex++ },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("▶", color = Color.White, fontSize = 20.sp)
                         }
                     }
                 }
