@@ -3,7 +3,7 @@
  * 
  * 功能说明：
  * - 全屏查看图片
- * - 支持滑动切换
+ * - 支持左右滑动切换
  * - 显示图片序号
  */
 package com.example.time.ui.components
@@ -13,10 +13,8 @@ import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -29,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -51,8 +50,6 @@ fun MediaViewer(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    
-    // 当前显示的索引
     var currentIndex by remember { mutableStateOf(initialIndex.coerceIn(0, (mediaPaths.size - 1).coerceAtLeast(0))) }
     
     Dialog(
@@ -65,6 +62,25 @@ fun MediaViewer(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { change, dragAmount ->
+                        change.consume()
+                        when {
+                            dragAmount > 50 -> {
+                                // 向右滑动，显示上一张
+                                if (currentIndex > 0) {
+                                    currentIndex -= 1
+                                }
+                            }
+                            dragAmount < -50 -> {
+                                // 向左滑动，显示下一张
+                                if (currentIndex < mediaPaths.size - 1) {
+                                    currentIndex += 1
+                                }
+                            }
+                        }
+                    }
+                }
         ) {
             // 顶部工具栏
             Row(
@@ -85,12 +101,14 @@ fun MediaViewer(
                 }
                 
                 // 序号显示
-                Text(
-                    text = "${currentIndex + 1} / ${mediaPaths.size}",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center
-                )
+                if (mediaPaths.isNotEmpty()) {
+                    Text(
+                        text = "${currentIndex + 1} / ${mediaPaths.size}",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 
                 // 占位，保持两端对称
                 Spacer(modifier = Modifier.size(48.dp))
@@ -136,37 +154,24 @@ fun MediaViewer(
                     }
                 }
                 
-                // 左右滑动切换按钮
+                // 左右切换指示
                 if (mediaPaths.size > 1) {
-                    // 上一张按钮
-                    if (currentIndex > 0) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 8.dp)
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color.White.copy(alpha = 0.3f))
-                                .clickable { currentIndex-- },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("◀", color = Color.White, fontSize = 20.sp)
-                        }
-                    }
-                    
-                    // 下一张按钮
-                    if (currentIndex < mediaPaths.size - 1) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 8.dp)
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color.White.copy(alpha = 0.3f))
-                                .clickable { currentIndex++ },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("▶", color = Color.White, fontSize = 20.sp)
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 30.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        repeat(mediaPaths.size) { index ->
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (index == currentIndex) Color.White
+                                        else Color.Gray.copy(alpha = 0.5f)
+                                    )
+                            )
                         }
                     }
                 }
@@ -242,7 +247,7 @@ fun SmallMediaThumbnail(
     Box(
         modifier = Modifier
             .size(60.dp)
-            .clip(RoundedCornerShape(4.dp))
+         .clip(RoundedCornerShape(4.dp))
             .background(Color.Gray.copy(alpha = 0.2f))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
