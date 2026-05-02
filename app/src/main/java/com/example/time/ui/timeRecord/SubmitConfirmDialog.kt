@@ -32,12 +32,13 @@ import androidx.compose.ui.window.Dialog
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.theme.EmotionColors
+import com.example.time.ui.components.MediaPicker
 
 /**
  * 提交确认对话框
  * 
  * @param timePiece 待提交的时间片段数据
- * @param onConfirm 确认提交回调，参数为可能修改后的结束时间
+ * @param onConfirm 确认提交回调，参数为(结束时间, 媒体路径列表)
  * @param onCancel 取消提交回调
  * @param latestTime 最早可选时间（上一条记录的时间点）
  */
@@ -45,7 +46,7 @@ import com.example.time.ui.theme.EmotionColors
 @Composable
 fun SubmitConfirmDialog(
     timePiece: TimePiece,
-    onConfirm: (finishedTime: Long) -> Unit,
+    onConfirm: (finishedTime: Long, mediaPaths: List<String>) -> Unit,
     onCancel: () -> Unit,
     latestTime: Long
 ) {
@@ -53,6 +54,8 @@ fun SubmitConfirmDialog(
     var isEditingTime by remember { mutableStateOf(false) }
     // 当前选择的结束时间（默认为传入的timePoint）
     var selectedFinishTime by remember { mutableStateOf(timePiece.timePoint) }
+    // 媒体附件列表
+    var mediaPaths by remember { mutableStateOf(timePiece.getMediaList()) }
     
     Dialog(onDismissRequest = onCancel) {
         Card(
@@ -255,6 +258,54 @@ fun SubmitConfirmDialog(
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // ===== 媒体附件 =====
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📷 媒体附件",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (mediaPaths.isNotEmpty()) {
+                                Text(
+                                    text = "${mediaPaths.size}个",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        MediaPicker(
+                            mediaPaths = mediaPaths,
+                            onMediaAdded = { path ->
+                                if (mediaPaths.size < 9) {
+                                    mediaPaths = mediaPaths + path
+                                }
+                            },
+                            onMediaRemoved = { path ->
+                                mediaPaths = mediaPaths - path
+                            },
+                            maxMedia = 9
+                        )
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
@@ -279,7 +330,7 @@ fun SubmitConfirmDialog(
                     
                     // 确认按钮
                     Button(
-                        onClick = { onConfirm(selectedFinishTime) },
+                        onClick = { onConfirm(selectedFinishTime, mediaPaths) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(

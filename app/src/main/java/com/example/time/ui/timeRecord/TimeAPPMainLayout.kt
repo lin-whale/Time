@@ -429,9 +429,10 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
         if (showSubmitConfirm && pendingTimePiece != null) {
             SubmitConfirmDialog(
                 timePiece = pendingTimePiece!!,
-                onConfirm = { finishedTime ->
-                    // 使用用户可能修改后的结束时间
+                onConfirm = { finishedTime, mediaPaths ->
+                    // 使用用户可能修改后的结束时间 + 媒体附件
                     val finalPiece = pendingTimePiece!!.copy(timePoint = finishedTime)
+                    finalPiece.setMediaList(mediaPaths)
                     viewModel.insertTimePiece(finalPiece)
                     
                     // 清空输入
