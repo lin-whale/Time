@@ -3,7 +3,8 @@
  * 
  * 功能说明：
  * - 在用户点击提交按钮后显示确认对话框
- * - 允许用户修改事件的结束时间（finishedTime）
+ * - 允许用户修改事件的结束时间
+ * - 支持添加媒体附件
  * - 显示完整的记录预览，让用户确认无误后再提交
  * 
  * 开发原则：
@@ -32,12 +33,13 @@ import androidx.compose.ui.window.Dialog
 import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.ui.theme.EmotionColors
+import com.example.time.ui.components.MediaPicker
 
 /**
  * 提交确认对话框
  * 
  * @param timePiece 待提交的时间片段数据
- * @param onConfirm 确认提交回调，参数为可能修改后的结束时间
+ * @param onConfirm 确认提交回调，参数为(结束时间, 媒体路径列表)
  * @param onCancel 取消提交回调
  * @param latestTime 最早可选时间（上一条记录的时间点）
  */
@@ -45,14 +47,16 @@ import com.example.time.ui.theme.EmotionColors
 @Composable
 fun SubmitConfirmDialog(
     timePiece: TimePiece,
-    onConfirm: (finishedTime: Long) -> Unit,
+    onConfirm: (finishedTime: Long, mediaPaths: List<String>) -> Unit,
     onCancel: () -> Unit,
     latestTime: Long
 ) {
     // 是否正在编辑结束时间
     var isEditingTime by remember { mutableStateOf(false) }
-    // 当前选择的结束时间（默认为传入的timePoint）
+    // 当前选择的结束时间
     var selectedFinishTime by remember { mutableStateOf(timePiece.timePoint) }
+    // 媒体附件列表
+    var mediaPaths by remember { mutableStateOf(emptyList<String>()) }
     
     Dialog(onDismissRequest = onCancel) {
         Card(
@@ -69,7 +73,7 @@ fun SubmitConfirmDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 标题（固定顶部）
+                // 标题
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -85,10 +89,7 @@ fun SubmitConfirmDialog(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Divider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        thickness = 1.dp
-                    )
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 
                 // 可滚动内容区
@@ -99,202 +100,221 @@ fun SubmitConfirmDialog(
                         .padding(horizontal = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                
-                // 事件名称显示
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp)
-                    ) {
-                        Text(
-                            text = "📌 事件",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = timePiece.mainEvent + 
-                                   if (timePiece.subEvent.isNotEmpty()) "：${timePiece.subEvent}" else "",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // 时间区间显示（可编辑结束时间）
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp)
-                    ) {
-                        Text(
-                            text = "⏱️ 时间段",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        // 开始时间（不可修改）
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "开始：",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = convertTimeFormat(timePiece.fromTimePoint, "yyyy/MM/dd HH:mm"),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        // 结束时间（可修改）
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "结束：",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = convertTimeFormat(selectedFinishTime, "yyyy/MM/dd HH:mm"),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                IconButton(
-                                    onClick = { isEditingTime = true },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "修改结束时间",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // 情绪评分显示
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "心情：",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    repeat(5) { index ->
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = null,
-                            tint = if (index < timePiece.emotion) 
-                                EmotionColors.getColorForStar(timePiece.emotion) 
-                            else Color.Gray.copy(alpha = 0.3f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-                
-                // 体验记录显示（如果有）
-                if (timePiece.lastTimeRecord.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    // 事件名称
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "💭 体验记录",
+                                text = "📌 事件",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = timePiece.lastTimeRecord,
-                                fontSize = 14.sp,
+                                text = timePiece.mainEvent + 
+                                       if (timePiece.subEvent.isNotEmpty()) "：${timePiece.subEvent}" else "",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            
-            // 底部按钮区（固定）
-            Column {
-                Divider()
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // 取消按钮
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f),
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // 时间区间
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                        ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("取消")
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "⏱️ 时间段",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("开始：", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = convertTimeFormat(timePiece.fromTimePoint, "yyyy/MM/dd HH:mm"),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("结束：", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = convertTimeFormat(selectedFinishTime, "yyyy/MM/dd HH:mm"),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    IconButton(
+                                        onClick = { isEditingTime = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "修改结束时间",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     
-                    // 确认按钮
-                    Button(
-                        onClick = { onConfirm(selectedFinishTime) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // 心情
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("✓ 确认记录")
+                        Text("心情：", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        repeat(5) { index ->
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                tint = if (index < timePiece.emotion) 
+                                    EmotionColors.getColorForStar(timePiece.emotion) 
+                                else Color.Gray.copy(alpha = 0.3f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    
+                    // 体验记录
+                    if (timePiece.lastTimeRecord.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "💭 体验记录",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = timePiece.lastTimeRecord,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // 媒体附件
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "📷 媒体附件",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (mediaPaths.isNotEmpty()) {
+                                    Text(
+                                        text = "${mediaPaths.size}张",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            MediaPicker(
+                                mediaPaths = mediaPaths,
+                                onMediaAdded = { path ->
+                                    if (mediaPaths.size < 9) {
+                                        mediaPaths = mediaPaths + path
+                                    }
+                                },
+                                onMediaRemoved = { path ->
+                                    mediaPaths = mediaPaths - path
+                                },
+                                maxMedia = 9
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                
+                // 底部按钮
+                Column {
+                    Divider()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onCancel,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("取消")
+                        }
+                        
+                        Button(
+                            onClick = { onConfirm(selectedFinishTime, mediaPaths) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                   ) {
+                            Text("✓ 确认记录")
+                        }
                     }
                 }
-            }
             }
         }
     }
     
-    // 时间选择器对话框
+    // 时间选择器
     if (isEditingTime) {
         TimePickerDialog(
             latestTime = latestTime,
