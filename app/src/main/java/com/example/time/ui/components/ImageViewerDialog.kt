@@ -38,6 +38,8 @@ import androidx.compose.foundation.Image
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.abs
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 
 /**
  * 图片预览对话框
@@ -143,7 +145,7 @@ fun ZoomableImage(
         modifier = modifier
             .clipToBounds()
             .transformable(state)
-            .offset { offset.toInt() },
+            .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) },
         contentAlignment = Alignment.Center
     ) {
         bitmap?.let {
