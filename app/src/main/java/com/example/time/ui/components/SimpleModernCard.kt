@@ -35,6 +35,13 @@ import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.logic.utils.convertDurationFormat
 import com.example.time.ui.theme.ModernColors
 import kotlin.math.roundToInt
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun SimpleModernCard(
@@ -129,6 +136,34 @@ fun SimpleModernCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        
+                        // 媒体附件（图片）
+                        if (timePiece.hasMedia()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(timePiece.getMediaList()) { path ->
+                                    val bitmap = remember(path) {
+                                        try {
+                                            BitmapFactory.decodeFile(path)
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                    }
+                                    bitmap?.let {
+                                        Image(
+                                            bitmap = it.asImageBitmap(),
+                                            contentDescription = "媒体附件",
+                                            modifier = Modifier
+                                                .size(80.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 
@@ -141,6 +176,16 @@ fun SimpleModernCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
+                // 媒体数量提示（折叠时）
+                if (!expanded && timePiece.hasMedia()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "📷 ${timePiece.getMediaCount()}张",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
