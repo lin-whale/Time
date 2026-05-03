@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.gestures.detectTapGestures
 
 @Composable
 fun SimpleModernCard(
@@ -50,6 +51,7 @@ fun SimpleModernCard(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var showImagePreview by remember { mutableStateOf<Pair<Boolean, Int>>(false to 0) }
     val emotionColor = ModernColors.getEmotionColor(timePiece.emotion)
     
     Card(
@@ -143,7 +145,8 @@ fun SimpleModernCard(
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                items(timePiece.getMediaList()) { path ->
+                                items(timePiece.getMediaList().size) { index ->
+                                    val path = timePiece.getMediaList()[index]
                                     val bitmap = remember(path) {
                                         try {
                                             BitmapFactory.decodeFile(path)
@@ -157,9 +160,23 @@ fun SimpleModernCard(
                                             contentDescription = "媒体附件",
                                             modifier = Modifier
                                                 .size(80.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .clickable {
+                                                    showImagePreview = true to index
+                                                },
                                             contentScale = ContentScale.Crop
                                         )
+                                    } ?: Box(
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .clickable {
+                                                showImagePreview = true to index
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("📷")
                                     }
                                 }
                             }
@@ -203,5 +220,14 @@ fun SimpleModernCard(
                 )
             }
         }
+    }
+    
+    // 图片预览对话框
+    if (showImagePreview.first && timePiece.hasMedia()) {
+        ImageViewerDialog(
+            imagePaths = timePiece.getMediaList(),
+            initialIndex = showImagePreview.second,
+            onDismiss = { showImagePreview = false to 0 }
+        )
     }
 }
