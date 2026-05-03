@@ -8,13 +8,19 @@
  * - 毛玻璃效果（半透明）
  * - 流畅的动画
  * - 清晰的信息层次
+ * - 支持显示媒体附件
  */
 package com.example.time.ui.components
 
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,6 +34,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +72,9 @@ fun ModernTimePieceCard(
         hours > 0 -> "${hours}h"
         else -> "${minutes}m"
     }
+    
+    // 获取媒体列表
+    val mediaList = timePiece.getMediaList()
     
     Card(
         modifier = modifier
@@ -191,6 +203,39 @@ fun ModernTimePieceCard(
                     }
                 }
                 
+                // 媒体附件显示
+                if (mediaList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(mediaList.take(4)) { path ->
+                            MediaThumbnail(path = path)
+                        }
+                        
+                        // 如果超过4张，显示数量提示
+                        if (mediaList.size > 4) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "+${mediaList.size - 4}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 // 底部：体验记录（如果有）
                 if (timePiece.lastTimeRecord.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -217,6 +262,52 @@ fun ModernTimePieceCard(
 }
 
 /**
+ * 媒体缩略图组件
+ */
+@Composable
+private fun MediaThumbnail(
+    path: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val bitmap = remember(path) {
+        try {
+            if (path.startsWith("/")) {
+                BitmapFactory.decodeFile(path)
+            } else {
+                val inputStream = context.contentResolver.openInputStream(Uri.parse(path))
+                BitmapFactory.decodeStream(inputStream).also {
+                    inputStream?.close()
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    Box(
+        modifier = modifier
+            .size(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        bitmap?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "附件图片",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } ?: Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("📷", fontSize = 20.sp)
+        }
+    }
+}
+
+/**
  * 紧凑版卡片（用于列表密集展示）
  */
 @Composable
@@ -226,6 +317,7 @@ fun CompactTimePieceCard(
     modifier: Modifier = Modifier
 ) {
     val emotionColor = ModernColors.getEmotionColor(timePiece.emotion)
+    val mediaList = timePiece.getMediaList()
     
     Card(
         modifier = modifier
@@ -265,11 +357,25 @@ fun CompactTimePieceCard(
                 
                 Spacer(modifier = Modifier.height(2.dp))
                 
-                Text(
-                    text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "M/d HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${convertTimeFormatSmart(timePiece.fromTimePoint, "M/d HH:mm")} - ${convertTimeFormatSmart(timePiece.timePoint, "M/d HH:mm")}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // 媒体数量提示
+                    if (mediaList.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "📷${mediaList.size}",
+                            fontSize = 12.sp,
+                            color = emotionColor
+                        )
+                    }
+                }
             }
             
             // 情绪指示器
