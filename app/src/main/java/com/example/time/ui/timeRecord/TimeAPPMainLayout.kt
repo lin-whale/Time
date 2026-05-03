@@ -97,6 +97,7 @@ import com.example.time.ui.activity.ShowIntroductionActivity
 import com.example.time.ui.activity.ShowTimePiecesActivity
 import com.example.time.ui.showLifePieces.LifePieceListEdit
 import com.example.time.ui.theme.EmotionColors
+import com.example.time.ui.components.MediaPicker
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -125,6 +126,9 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
     // 新增：提交确认对话框状态
     var showSubmitConfirm by remember { mutableStateOf(false) }
     var pendingTimePiece by remember { mutableStateOf<TimePiece?>(null) }
+    
+    // 媒体附件状态
+    var mediaPaths by remember { mutableStateOf(emptyList<String>()) }
     
     // Activity launchers
     val themeActivityLauncher = rememberLauncherForActivityResult(
@@ -267,6 +271,54 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                         )
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // ===== 媒体附件 =====
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📷 图片附件",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (mediaPaths.isNotEmpty()) {
+                                Text(
+                                    text = "${mediaPaths.size}张",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        MediaPicker(
+                            mediaPaths = mediaPaths,
+                            onMediaAdded = { path ->
+                                if (mediaPaths.size < 9) {
+                                    mediaPaths = mediaPaths + path
+                                }
+                            },
+                            onMediaRemoved = { path ->
+                                mediaPaths = mediaPaths - path
+                            },
+                            maxMedia = 9
+                        )
+                    }
+                }
             }
         }
         
@@ -336,6 +388,8 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                         mainEvent = mainEvent,
                         subEvent = subEvent
                     )
+                    // 设置媒体附件
+                    timePiece.setMediaList(mediaPaths)
                     
                     if (mainEvent.isNotBlank()) {
                         // 读取设置：是否需要确认对话框
@@ -354,6 +408,7 @@ fun TimeAPPMainLayout(viewModel: TimeViewModel = viewModel()) {
                             tiYan = ""
                             emotionStar = 3
                             isTimePick = false
+                            mediaPaths = emptyList()
                         }
                     }
                 },
