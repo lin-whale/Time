@@ -37,6 +37,7 @@ import com.example.time.ui.theme.ModernColors
 import kotlin.math.roundToInt
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.clip
