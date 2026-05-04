@@ -289,22 +289,47 @@ private fun saveImageToGallery(context: android.content.Context, path: String) {
             return
         }
         
-        // 保存到 Pictures/Timefly 目录
-        val picturesDir = File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "Timefly")
-        if (!picturesDir.exists()) picturesDir.mkdirs()
+        val contentResolver = context.contentResolver
+        val fileName = "Timefly_${System.currentTimeMillis()}_${sourceFile.name}"
         
-        val destFile = File(picturesDir, sourceFile.name)
-        sourceFile.copyTo(destFile, overwrite = true)
-        
-        // 通知媒体库更新
-        android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-            data = android.net.Uri.fromFile(destFile)
-            context.sendBroadcast(this)
+        // 使用 MediaStore 保存到公共相册
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_PICTURES}/Timefly")
+            put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
         }
         
-        Toast.makeText(context, "已保存到 Pictures/Timefly", Toast.LENGTH_SHORT).show()
+        val imageUri = contentResolver.insert(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        )
+        
+        if (imageUri == null) {
+            Toast.makeText(context, "创建相册条目失败", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // 复制图片数据
+        contentResolver.openOutputStream(imageUri)?.use { outputStream ->
+            sourceFile.inputStream().use { inputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        } ?: run {
+            Toast.makeText(context, "写入图片失败", Toast.LENGTH_SHORT).show()
+            contentResolver.delete(imageUri, null, null)
+            return
+        }
+        
+        // 标记为已完成，使其在相册中可见
+        contentValues.clear()
+        contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+        contentResolver.update(imageUri, contentValues, null, null)
+        
+        Toast.makeText(context, "已保存到相册 Pictures/Timefly", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        e.printStackTrace()
     }
 }
 
