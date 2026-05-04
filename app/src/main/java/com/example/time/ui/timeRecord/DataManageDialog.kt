@@ -105,16 +105,6 @@ fun DataManageDialog(
                         isImporting = false
                         if (result.success) {
                             pendingImportResult = result
-                            // 直接导入数据
-                            val jsonData = exportToJson(
-                                result.timePiecesCount.let { count ->
-                                    // 从 ZIP 导入时，我们要真正的数据
-                                    // 这里我们创建一个临时的 ImportResult，实际数据还需要解析
-                                    listOf<TimePiece>()
-                                },
-                                listOf()
-                            )
-                            // 这里简化处理：ZIP 导入已经完成了数据解析
                             showImportConfirm = true
                         } else {
                             Toast.makeText(context, "❌ ${result.message}", Toast.LENGTH_SHORT).show()
@@ -122,7 +112,7 @@ fun DataManageDialog(
                     }
                 } else {
                     // JSON 格式导入（旧格式兼容）
-                    val jsonString = readFromUri(context, it)
+                    val jsonString = readJsonFromUri(context, it)
                     Thread.currentThread().interrupt()
                     (context as? android.app.Activity)?.runOnUiThread {
                         isImporting = false

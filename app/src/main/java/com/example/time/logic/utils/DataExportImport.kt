@@ -146,10 +146,6 @@ fun importFromZip(context: Context, uri: Uri): ImportResult {
         val imageDir = File(context.filesDir, "images")
         if (!imageDir.exists()) imageDir.mkdirs()
         
-        val exportData: ExportData?
-        val importedImages = mutableMapOf<String, String>() // 原文件名 -> 新路径
-        var imageCount = 0
-        
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
             ZipInputStream(BufferedInputStream(inputStream)).use { zipIn ->
                 var entry: ZipEntry? = zipIn.nextEntry
@@ -189,7 +185,7 @@ fun importFromZip(context: Context, uri: Uri): ImportResult {
         }
         
         // 解析 JSON 数据
-        exportData = parseFromJson(jsonData!!)
+        val exportData = parseFromJson(jsonData!!)
             ?: return ImportResult(
                 success = false,
                 message = "JSON 数据解析失败"
@@ -360,6 +356,26 @@ fun isZipFile(context: Context, uri: Uri): Boolean {
         } ?: false
     } catch (e: Exception) {
         false
+    }
+}
+
+/**
+ * 从文件读取 JSON 数据（通过 Uri）
+ * 
+ * @param context 上下文
+ * @param uri 文件 Uri
+ * @return JSON 字符串，如果读取失败返回 null
+ */
+fun readJsonFromUri(context: Context, uri: Uri): String? {
+    return try {
+        java.io.BufferedReader(
+            java.io.InputStreamReader(context.contentResolver.openInputStream(uri), Charsets.UTF_8)
+        ).use { reader ->
+            reader.readText()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
 
