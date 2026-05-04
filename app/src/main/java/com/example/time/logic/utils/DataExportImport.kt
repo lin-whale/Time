@@ -88,6 +88,10 @@ fun exportToJson(timePieces: List<TimePiece>, lifePieces: List<LifePiece>): Stri
             put("lastTimeRecord", piece.lastTimeRecord)
             put("mainEvent", piece.mainEvent)
             put("subEvent", piece.subEvent)
+            // 导出媒体路径（图片附件）
+            piece.mediaPaths?.let {
+                put("mediaPaths", JSONArray(it))
+            }
         }
         timePiecesArray.put(pieceJson)
     }
@@ -137,6 +141,10 @@ fun parseFromJson(jsonString: String): ExportData? {
                     mainEvent = pieceJson.getString("mainEvent"),
                     subEvent = pieceJson.optString("subEvent", "")
                 )
+                // 导入媒体路径（图片附件）
+                pieceJson.optJSONArray("mediaPaths")?.let { mediaArray ->
+                    piece.mediaPaths = mediaArray.toString()
+                }
                 timePieces.add(piece)
             }
         }
