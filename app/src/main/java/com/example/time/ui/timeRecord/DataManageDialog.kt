@@ -2,8 +2,8 @@
  * DataManageDialog - 数据导入导出管理对话框
  * 
  * 功能说明：
- * - 导出所有时间记录到 JSON 文件
- * - 从 JSON 文件导入时间记录
+ * - 导出所有时间记录到 ZIP 文件（包含 JSON + 图片）
+ * - 从 ZIP 文件导入时间记录
  * - 支持增量导入和覆盖导入
  * 
  * 开发原则：
@@ -51,44 +51,95 @@ fun DataManageDialog(
     
     var showImportConfirm by remember { mutableStateOf(false) }
     var pendingImportData by remember { mutableStateOf<ExportData?>(null) }
+    var pendingImportResult by remember { mutableStateOf<ImportResult?>(null) }
     var importMode by remember { mutableStateOf("append") } // append 或 replace
+    var isExporting by remember { mutableStateOf(false) }
+    var isImporting by remember { mutableStateOf(false) }
     
-    // 导出文件选择器
+    // 导出文件选择器 (ZIP 格式)
     val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
+        contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
         uri?.let {
-            // 导出数据
-            val jsonData = exportToJson(
-                allTimePieces.value ?: listOf(),
-                allLifePieces.value ?: listOf()
-            )
-            val success = writeToUri(context, it, jsonData)
-            if (success) {
-                Toast.makeText(context, "✅ 导出成功！", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "❌ 导出失败", Toast.LENGTH_SHORT).show()
-            }
+            isExporting = true
+            Thread {
+                val result = exportToZip(
+                    context,
+                    it,
+                    allTimePieces.value ?: listOf(),
+                    allLifePieces.value ?: listOf()
+                )
+                Thread.currentThread().interrupt()
+                (context as? android.app.Activity)?.runOnUiThread {
+                    isExporting = false
+                    if (result.success) {
+                        val msg = if (result.imageCount > 0) {
+                            "✅ 导出成功！包含 ${result.imageCount} 张图片"
+                        } else {
+                            "✅ 导出成功！"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "❌ ${result.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
         }
     }
     
-    // 导入文件选择器
+    // 导入文件选择器 (支持 ZIP 和 JSON)
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            val jsonString = readFromUri(context, it)
-            if (jsonString != null) {
-                val data = parseFromJson(jsonString)
-                if (data != null) {
-                    pendingImportData = data
-                    showImportConfirm = true
+            isImporting = true
+            Thread {
+                // 检测文件类型
+                val isZip = isZipFile(context, it)
+                
+                if (isZip) {
+                    // ZIP 格式导入（新格式，包含图片）
+                    val result = importFromZip(context, it)
+                    Thread.currentThread().interrupt()
+                    (context as? android.app.Activity)?.runOnUiThread {
+                        isImporting = false
+                        if (result.success) {
+                            pendingImportResult = result
+                            // 直接导入数据
+                            val jsonData = exportToJson(
+                                result.timePiecesCount.let { count ->
+                                    // 从 ZIP 导入时，我们要真正的数据
+                                    // 这里我们创建一个临时的 ImportResult，实际数据还需要解析
+                                    listOf<TimePiece>()
+                                },
+                                listOf()
+                            )
+                            // 这里简化处理：ZIP 导入已经完成了数据解析
+                            showImportConfirm = true
+                        } else {
+                            Toast.makeText(context, "❌ ${result.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 } else {
-                    Toast.makeText(context, "❌ 文件格式错误", Toast.LENGTH_SHORT).show()
+                    // JSON 格式导入（旧格式兼容）
+                    val jsonString = readFromUri(context, it)
+                    Thread.currentThread().interrupt()
+                    (context as? android.app.Activity)?.runOnUiThread {
+                        isImporting = false
+                        if (jsonString != null) {
+                            val data = parseFromJson(jsonString)
+                            if (data != null) {
+                                pendingImportData = data
+                                showImportConfirm = true
+                            } else {
+                                Toast.makeText(context, "❌ 文件格式错误", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "❌ 读取文件失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            } else {
-                Toast.makeText(context, "❌ 读取文件失败", Toast.LENGTH_SHORT).show()
-            }
+            }.start()
         }
     }
     
@@ -128,9 +179,19 @@ fun DataManageDialog(
                         exportLauncher.launch(fileName)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = !isExporting && !isImporting
                 ) {
-                    Text("📤 导出数据到文件")
+                    if (isExporting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("导出中...")
+                    } else {
+                        Text("📤 导出数据（含图片）")
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -138,19 +199,29 @@ fun DataManageDialog(
                 // 导入按钮
                 OutlinedButton(
                     onClick = {
-                        importLauncher.launch(arrayOf("application/json", "*/*"))
+                        importLauncher.launch(arrayOf("*/*"))
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = !isExporting && !isImporting
                 ) {
-                    Text("📥 从文件导入数据")
+                    if (isImporting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("导入中...")
+                    } else {
+                        Text("📥 导入数据")
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
                 // 说明文字
                 Text(
-                    text = "💡 导出的 JSON 文件可用于：\n• 备份数据\n• 迁移到新设备\n• 版本升级后恢复数据",
+                    text = "💡 导出的 ZIP 包含：\n• 所有时间记录 (JSON)\n• 所有图片附件\n• 可跨设备完整迁移",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -165,17 +236,21 @@ fun DataManageDialog(
     }
     
     // 导入确认对话框
-    if (showImportConfirm && pendingImportData != null) {
+    if (showImportConfirm && (pendingImportData != null || pendingImportResult != null)) {
         AlertDialog(
             onDismissRequest = { 
                 showImportConfirm = false
                 pendingImportData = null
+                pendingImportResult = null
             },
             title = { Text("确认导入") },
             text = {
                 Column {
-                    Text("发现 ${pendingImportData!!.timePieces.size} 条时间记录")
-                    Text("发现 ${pendingImportData!!.lifePieces.size} 个标签")
+                    Text("发现 ${pendingImportResult!!.timePieces.size} 条时间记录")
+                    Text("发现 ${pendingImportResult!!.lifePieces.size} 个标签")
+                    if (pendingImportResult!!.imageCount > 0) {
+                        Text("包含 ${pendingImportResult!!.imageCount} 张图片", color = MaterialTheme.colorScheme.primary)
+                    }
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
@@ -205,20 +280,27 @@ fun DataManageDialog(
             confirmButton = {
                 Button(
                     onClick = {
-                        val data = pendingImportData!!
                         val clearExisting = importMode == "replace"
                         
-                        viewModel.importTimePieces(data.timePieces, clearExisting)
-                        viewModel.importLifePieces(data.lifePieces, clearExisting)
+                        if (pendingImportResult != null) {
+                            // ZIP 导入，数据已经在 ImportResult 中
+                            viewModel.importTimePieces(pendingImportResult!!.timePieces, clearExisting)
+                            viewModel.importLifePieces(pendingImportResult!!.lifePieces, clearExisting)
+                        } else if (pendingImportData != null) {
+                            viewModel.importTimePieces(pendingImportData!!.timePieces, clearExisting)
+                            viewModel.importLifePieces(pendingImportData!!.lifePieces, clearExisting)
+                        }
                         
-                        Toast.makeText(
-                            context, 
-                            "✅ 导入成功！共 ${data.timePieces.size} 条记录", 
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        val msg = if (pendingImportResult != null && pendingImportResult!!.imageCount > 0) {
+                            "✅ 导入成功！包含 ${pendingImportResult!!.imageCount} 张图片"
+                        } else {
+                            "✅ 导入成功！"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         
                         showImportConfirm = false
                         pendingImportData = null
+                        pendingImportResult = null
                     }
                 ) {
                     Text("确认导入")
@@ -229,6 +311,7 @@ fun DataManageDialog(
                     onClick = {
                         showImportConfirm = false
                         pendingImportData = null
+                        pendingImportResult = null
                     }
                 ) {
                     Text("取消")
