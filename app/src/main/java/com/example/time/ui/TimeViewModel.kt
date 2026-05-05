@@ -63,8 +63,11 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
 
     /**
      * 获取指定时间范围内的时间片段
+     * 保存查询范围，用于后续刷新
      */
     fun getTimePiecesBetween(startTime: Long, endTime: Long) {
+        currentQueryStartTime = startTime
+        currentQueryEndTime = endTime
         viewModelScope.launch {
             val timePiecesList = repository.getTimePiecesBetween(startTime, endTime)
             _timePieces.value = timePiecesList
@@ -94,6 +97,10 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
     
     // ========== 新增编辑功能 ==========
     
+    // 当前查询的时间范围（用于刷新）
+    private var currentQueryStartTime: Long = 0L
+    private var currentQueryEndTime: Long = 0L
+    
     /**
      * 更新已有的时间片段
      * 用于编辑记录的开始时间、结束时间、事件名称、情绪等
@@ -102,6 +109,35 @@ class TimeViewModel(private val repository: TimeRepository) : ViewModel() {
      */
     fun updateTimePiece(timePiece: TimePiece) = viewModelScope.launch(Dispatchers.IO) {
         repository.updateTimePiece(timePiece)
+    }
+    
+    /**
+     * 更新时间片段并刷新列表（确保数据立即更新）
+     * 编辑后调用此方法，保证刷新时数据已写入
+     */
+    fun updateTimePieceAndRefresh(timePiece: TimePiece) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            repository.updateTimePiece(timePiece)
+        }
+        // 更新完成后刷新数据
+        if (currentQueryStartTime > 0 && currentQueryEndTime > 0) {
+            val timePiecesList = repository.getTimePiecesBetween(currentQueryStartTime, currentQueryEndTime)
+            _timePieces.value = timePiecesList
+        }
+    }
+    
+    /**
+     * 删除时间片段并刷新列表
+     */
+    fun deleteTimePieceAndRefresh(timePiece: TimePiece) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            repository.deleteTimePiece(timePiece)
+        }
+        // 删除完成后刷新数据
+        if (currentQueryStartTime > 0 && currentQueryEndTime > 0) {
+            val timePiecesList = repository.getTimePiecesBetween(currentQueryStartTime, currentQueryEndTime)
+            _timePieces.value = timePiecesList
+        }
     }
     
     /**

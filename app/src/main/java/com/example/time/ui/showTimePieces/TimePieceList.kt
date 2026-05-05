@@ -62,13 +62,13 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
  * 
  * @param timePieces 时间片段列表
  * @param viewModel 视图模型
- * @param onRefresh 刷新回调（编辑保存后调用）
+ * @param onRefresh 刷新回调（已弃用，ViewModel 内部自动刷新）
  */
 @Composable
 fun TimePieceList(
     timePieces: List<TimePiece>,
     viewModel: TimeViewModel? = null,
-    onRefresh: (() -> Unit)? = null
+    @Suppress("UNUSED_PARAMETER") onRefresh: (() -> Unit)? = null
 ) {
     var editingPiece by remember { mutableStateOf<TimePiece?>(null) }
     
@@ -98,39 +98,33 @@ fun TimePieceList(
             earlierPiece = earlierPiece,
             laterPiece = laterPiece,
             onSave = { updated, adjustedEarlier, adjustedLater ->
-                // 保存当前记录
-                viewModel.updateTimePiece(updated)
+                // 使用同步刷新方法，确保数据立即更新
+                viewModel.updateTimePieceAndRefresh(updated)
                 
                 // 保存被调整的相邻记录（如果有）
-                adjustedEarlier?.let { viewModel.updateTimePiece(it) }
-                adjustedLater?.let { viewModel.updateTimePiece(it) }
+                adjustedEarlier?.let { viewModel.updateTimePieceAndRefresh(it) }
+                adjustedLater?.let { viewModel.updateTimePieceAndRefresh(it) }
                 
                 editingPiece = null
-                
-                // 刷新列表数据
-                onRefresh?.invoke()
             },
             onDelete = { deleted ->
                 // 删除记录时，需要填补时间空隙
                 if (earlierPiece != null && laterPiece != null) {
                     // 中间记录：让时间更早的记录延长到时间更晚记录的开始
                     val adjustedEarlier = earlierPiece.copy(timePoint = laterPiece.fromTimePoint)
-                    viewModel.updateTimePiece(adjustedEarlier)
+                    viewModel.updateTimePieceAndRefresh(adjustedEarlier)
                 } else if (earlierPiece != null && laterPiece == null) {
                     // 最新记录：让时间更早的记录延长到被删除记录的结束时间
                     val adjustedEarlier = earlierPiece.copy(timePoint = deleted.timePoint)
-                    viewModel.updateTimePiece(adjustedEarlier)
+                    viewModel.updateTimePieceAndRefresh(adjustedEarlier)
                 } else if (earlierPiece == null && laterPiece != null) {
                     // 最早记录：让时间更晚记录的开始时间提前
                     val adjustedLater = laterPiece.copy(fromTimePoint = deleted.fromTimePoint)
-                    viewModel.updateTimePiece(adjustedLater)
+                    viewModel.updateTimePieceAndRefresh(adjustedLater)
                 }
                 
-                viewModel.deleteTimePiece(deleted)
+                viewModel.deleteTimePieceAndRefresh(deleted)
                 editingPiece = null
-                
-                // 刷新列表数据
-                onRefresh?.invoke()
             },
             onCancel = { editingPiece = null }
         )
