@@ -1,6 +1,7 @@
 /**
  * TimePieceList - 时间片段列表组件
  * 支持点击编辑功能，自动保持时间连续性
+ * 编辑保存后自动刷新列表
  */
 package com.example.time.ui.showTimePieces
 
@@ -58,11 +59,16 @@ fun TimePieceListColumn(timePieces: List<TimePiece>) {
 /**
  * 时间片段列表
  * 使用简化的编辑对话框，清晰显示影响
+ * 
+ * @param timePieces 时间片段列表
+ * @param viewModel 视图模型
+ * @param onRefresh 刷新回调（编辑保存后调用）
  */
 @Composable
 fun TimePieceList(
     timePieces: List<TimePiece>,
-    viewModel: TimeViewModel? = null
+    viewModel: TimeViewModel? = null,
+    onRefresh: (() -> Unit)? = null
 ) {
     var editingPiece by remember { mutableStateOf<TimePiece?>(null) }
     
@@ -100,6 +106,9 @@ fun TimePieceList(
                 adjustedLater?.let { viewModel.updateTimePiece(it) }
                 
                 editingPiece = null
+                
+                // 刷新列表数据
+                onRefresh?.invoke()
             },
             onDelete = { deleted ->
                 // 删除记录时，需要填补时间空隙
@@ -119,6 +128,9 @@ fun TimePieceList(
                 
                 viewModel.deleteTimePiece(deleted)
                 editingPiece = null
+                
+                // 刷新列表数据
+                onRefresh?.invoke()
             },
             onCancel = { editingPiece = null }
         )

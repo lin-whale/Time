@@ -33,7 +33,10 @@ import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun DatePeriodPicker(viewModel: TimeViewModel) {
+fun DatePeriodPicker(
+    viewModel: TimeViewModel,
+    onTimeRangeChanged: ((from: Long, to: Long) -> Unit)? = null
+) {
     val dateFrom = remember { mutableStateOf(LocalDate.now()) }
     val dateTo = remember { mutableStateOf(LocalDate.now().plusDays(1)) }
 
@@ -60,6 +63,7 @@ fun DatePeriodPicker(viewModel: TimeViewModel) {
                     msTimeFrom.value =
                         it.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
                     dateFrom.value = it
+                    onTimeRangeChanged?.invoke(msTimeFrom.value, msTimeTo.value)
                 },
                 modifier = Modifier.weight(1f)
             )
@@ -75,6 +79,7 @@ fun DatePeriodPicker(viewModel: TimeViewModel) {
                     msTimeTo.value =
                         it.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli()
                     dateTo.value = it
+                    onTimeRangeChanged?.invoke(msTimeFrom.value, msTimeTo.value)
                 },
                 modifier = Modifier.weight(1f)
             )
