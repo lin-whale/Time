@@ -5,6 +5,7 @@
  * 1. 默认"连续模式" - 修改边界时自动调整相邻记录，保持无缝连接
  * 2. 可选"独立模式" - 只修改当前记录，允许产生时间空隙
  * 3. 修改前预览影响，一键应用或取消
+ * 4. 支持编辑图片附件（增加和删除）
  */
 package com.example.time.ui.timeRecord
 
@@ -32,6 +33,7 @@ import com.example.time.logic.model.TimePiece
 import com.example.time.logic.utils.convertTimeFormat
 import com.example.time.logic.utils.convertTimeFormatSmart
 import com.example.time.ui.theme.ModernColors
+import com.example.time.ui.components.MediaPicker
 import kotlin.math.roundToLong
 
 /**
@@ -60,6 +62,9 @@ fun SimpleTimePieceEditDialog(
     var editedSubEvent by remember { mutableStateOf(currentPiece.subEvent) }
     var editedEmotion by remember { mutableStateOf(currentPiece.emotion) }
     var editedRecord by remember { mutableStateOf(currentPiece.lastTimeRecord) }
+    
+    // 媒体附件编辑状态
+    var editedMediaPaths by remember { mutableStateOf(currentPiece.getMediaList()) }
     
     // 模式：true=连续模式，false=独立模式
     var continuousMode by remember { mutableStateOf(true) }
@@ -396,6 +401,54 @@ fun SimpleTimePieceEditDialog(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
+                
+                // ===== 媒体附件编辑 =====
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📷 图片附件",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (editedMediaPaths.isNotEmpty()) {
+                                Text(
+                                    text = "${editedMediaPaths.size}张",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        MediaPicker(
+                            mediaPaths = editedMediaPaths,
+                            onMediaAdded = { path ->
+                                if (editedMediaPaths.size < 9) {
+                                    editedMediaPaths = editedMediaPaths + path
+                                }
+                            },
+                            onMediaRemoved = { path ->
+                                editedMediaPaths = editedMediaPaths - path
+                            },
+                            maxMedia = 9
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
             
             // 底部按钮区（固定）
@@ -425,6 +478,8 @@ fun SimpleTimePieceEditDialog(
                                 emotion = editedEmotion,
                                 lastTimeRecord = editedRecord
                             )
+                            // 设置媒体附件
+                            updated.setMediaList(editedMediaPaths)
                             onSave(updated, adjustedEarlier, adjustedLater)
                         },
                         modifier = Modifier.weight(1f),
