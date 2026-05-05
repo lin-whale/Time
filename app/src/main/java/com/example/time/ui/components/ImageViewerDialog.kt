@@ -1,18 +1,20 @@
 /**
  * 图片预览对话框
  * 支持大图查看、缩放、下载、左右滑动切换
+ * 使用改进的手势处理，解决滑动和缩放冲突
  */
 package com.example.time.ui.components
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.Toast
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -28,18 +30,18 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
-import java.io.FileOutputStream
-import kotlin.math.abs
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * 图片预览对话框
@@ -57,15 +59,14 @@ fun ImageViewerDialog(
 ) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, imagePaths.size - 1),
+        initialPage = initialIndex.coerceIn(0, (imagePaths.size - 1).coerceAtLeast(0)),
         pageCount = { imagePaths.size }
     )
     
-    // 加载当前图片
-    val currentPath = imagePaths.getOrElse(pagerState.currentPage) { imagePaths.firstOrNull() } ?: ""
-    var currentBitmap by remember(currentPath) { 
-        mutableStateOf<Bitmap?>(loadBitmapFromPath(currentPath)) 
-    }
+    // 每张图片的缩放和偏移状态
+    val scaleStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(1f) } } }
+    val offsetXStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
+    val offsetYStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -94,15 +95,64 @@ fun ImageViewerDialog(
                     ) { page ->
                         val path = imagePaths[page]
                         val bitmap = remember(path) { loadBitmapFromPath(path) }
+                        
+                        // 当前图片的缩放和偏移
+                        val scale = scaleStates[page]
+                        val offsetX = offsetXStates[page]
+                        val offsetY = offsetYStates[page]
+                        
+                        // 图片加载完成后获取尺寸
+                        var imageSize by remember { mutableStateOf(IntSize.Zero) }
+                        
                         ZoomableImage(
                             bitmap = bitmap,
-                           Modifier.fillMaxSize()
+                            scale = scale,
+                            offsetX = offsetX,
+                            offsetY = offsetY,
+                            onScaleChange = { newScale ->
+                                scaleStates[page] = newScale.coerceIn(0.5f, 5f)
+                            },
+                            onOffsetChange = { newOffsetX, newOffsetY ->
+                                // 限制偏移范围，防止图片移出屏幕
+                                val maxOffsetX = (imageSize.width * (scaleStates[page] - 1) / 2f)
+                                val maxOffsetY = (imageSize.height * (scaleStates[page] - 1) / 2f)
+                                offsetXStates[page] = newOffsetX.coerceIn(-maxOffsetX, maxOffsetX)
+                                offsetYStates[page] = newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
+                            },
+                            onReset = {
+                                scaleStates[page] = 1f
+                                offsetXStates[page] = 0f
+                                offsetYStates[page] = 0f
+                            },
+                            onImageSizeReady = { imageSize = it },
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
-                } else {
+                } else if (imagePaths.size == 1) {
                     // 单张图片
+                    val path = imagePaths.first()
+                    val bitmap = remember(path) { loadBitmapFromPath(path) }
+                    
+                    var imageSize by remember { mutableStateOf(IntSize.Zero) }
+                    
                     ZoomableImage(
-                        bitmap = currentBitmap,
+                        bitmap = bitmap,
+                        scale = scaleStates[0],
+                        offsetX = offsetXStates[0],
+                        offsetY = offsetYStates[0],
+                        onScaleChange = { scaleStates[0] = it.coerceIn(0.5f, 5f) },
+                        onOffsetChange = { x, y ->
+                            val maxOffsetX = (imageSize.width * (scaleStates[0] - 1) / 2f)
+                            val maxOffsetY = (imageSize.height * (scaleStates[0] - 1) / 2f)
+                            offsetXStates[0] = x.coerceIn(-maxOffsetX, maxOffsetX)
+                            offsetYStates[0] = y.coerceIn(-maxOffsetY, maxOffsetY)
+                        },
+                        onReset = {
+                            scaleStates[0] = 1f
+                            offsetXStates[0] = 0f
+                            offsetYStates[0] = 0f
+                        },
+                        onImageSizeReady = { imageSize = it },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -117,35 +167,121 @@ fun ImageViewerDialog(
             )
             
             // 底部工具栏
+            val currentPath = imagePaths.getOrElse(pagerState.currentPage) { imagePaths.firstOrNull() } ?: ""
             BottomToolbar(
                 imagePath = currentPath,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
+            
+            // 左右滑动指示器
+            if (imagePaths.size > 1) {
+                // 左箭头
+                if (pagerState.currentPage > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 8.dp)
+                            .size(48.dp)
+                            .clickable { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("‹", color = Color.White.copy(alpha = 0.7f), fontSize = 32.sp)
+                    }
+                }
+                
+                // 右箭头
+                if (pagerState.currentPage < imagePaths.size - 1) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 8.dp)
+                            .size(48.dp)
+                            .clickable { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("›", color = Color.White.copy(alpha = 0.7f), fontSize = 32.sp)
+                    }
+                }
+                
+                // 底部页码指示器
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 72.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    repeat(imagePaths.size) { index ->
+                        Box(
+                            modifier = Modifier
+                                .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
+                                .background(
+                                    if (index == pagerState.currentPage) Color.White else Color.White.copy(alpha = 0.4f),
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 /**
  * 可缩放的图片组件
+ * 支持双指缩放、拖拽、双击重置
  */
 @Composable
 fun ZoomableImage(
     bitmap: Bitmap?,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float,
+    onScaleChange: (Float) -> Unit,
+    onOffsetChange: (Float, Float) -> Unit,
+    onReset: () -> Unit,
+    onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    
-    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
-        scale = (scale * zoomChange).coerceIn(0.5f, 3f)
-        offset = offset + offsetChange
-    }
+    var lastScale by remember { mutableFloatStateOf(1f) }
+    var lastOffsetX by remember { mutableFloatStateOf(0f) }
+    var lastOffsetY by remember { mutableFloatStateOf(0f) }
     
     Box(
         modifier = modifier
             .clipToBounds()
-            .transformable(state)
-            .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) },
+            .onSizeChanged { size -> onImageSizeReady(size) }
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    // 处理缩放
+                    val newScale = lastScale * zoom
+                    onScaleChange(newScale)
+                    
+                    // 只有在缩放状态下才处理平移
+                    if (newScale > 1.01f) {
+                        onOffsetChange(lastOffsetX + pan.x, lastOffsetY + pan.y)
+                    }
+                    
+                    lastScale = newScale
+                    lastOffsetX = if (newScale > 1.01f) lastOffsetX + pan.x else 0f
+                    lastOffsetY = if (newScale > 1.01f) lastOffsetY + pan.y else 0f
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        // 双击重置或放大到2x
+                        if (scale > 1.5f) {
+                            onReset()
+                            lastScale = 1f
+                            lastOffsetX = 0f
+                            lastOffsetY = 0f
+                        } else {
+                            onScaleChange(2f)
+                            lastScale = 2f
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         bitmap?.let {
@@ -153,15 +289,11 @@ fun ZoomableImage(
                 bitmap = it.asImageBitmap(),
                 contentDescription = "预览图片",
                 modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                // 双击重置缩放
-                                scale = if (scale > 1f) 1f else 2f
-                                offset = Offset.Zero
-                            }
-                        )
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
                     },
                 contentScale = ContentScale.Fit
             )
