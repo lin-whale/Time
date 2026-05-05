@@ -296,7 +296,7 @@ fun ZoomableImage(
 
 /**
  * 自定义双指手势检测
- * @param shouldConsume 返回true时消费事件，返回false时不消费（让其他组件处理）
+ * 双指手势总是处理（用于缩放），单指手势根据 shouldConsume 决定
  */
 private suspend fun PointerInputScope.detectTransformGesturesCustom(
     onGesture: (pan: Offset, zoom: Float, rotation: Float) -> Unit,
@@ -316,6 +316,7 @@ private suspend fun PointerInputScope.detectTransformGesturesCustom(
             
             when {
                 pointerCount >= 2 -> {
+                    // 双指手势：总是处理缩放，始终消费事件
                     val p1 = pointers[0].position
                     val p2 = pointers[1].position
                     
@@ -327,17 +328,16 @@ private suspend fun PointerInputScope.detectTransformGesturesCustom(
                         val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
                         
                         onGesture(pan, zoom, 0f)
-                        
-                        // 只有在需要消费时才消费
-                        if (shouldConsume()) {
-                            pointers.forEach { it.consume() }
-                        }
                     }
+                    
+                    // 双指手势始终消费，防止 Pager 干扰
+                    pointers.forEach { it.consume() }
                     
                     oldCenter = newCenter
                     oldDistance = newDistance
                 }
                 pointerCount == 1 -> {
+                    // 单指手势：根据 shouldConsume 决定是否处理
                     val pos = pointers[0].position
                     if (oldPointerCount >= 2) {
                         // 从双指变成单指，更新中心
@@ -349,6 +349,7 @@ private suspend fun PointerInputScope.detectTransformGesturesCustom(
                         pointers[0].consume()
                         oldCenter = pos
                     }
+                    // 非缩放状态不消费，让 Pager 处理
                 }
             }
             
