@@ -12,7 +12,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -29,7 +28,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.position
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +41,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * 图片预览对话框
@@ -108,7 +111,7 @@ fun ImageViewerDialog(
                             offsetX = offsetX,
                             offsetY = offsetY,
                             onScaleChange = { newScale ->
-                                scaleStates[page] = newScale.coerceIn(0.5f, 5f)
+                                scaleStates[page] = newScale.coerceIn(1f, 5f)
                             },
                             onOffsetChange = { newOffsetX, newOffsetY ->
                                 // 限制偏移范围，防止图片移出屏幕
@@ -138,7 +141,7 @@ fun ImageViewerDialog(
                         scale = scaleStates[0],
                         offsetX = offsetXStates[0],
                         offsetY = offsetYStates[0],
-                        onScaleChange = { scaleStates[0] = it.coerceIn(0.5f, 5f) },
+                        onScaleChange = { scaleStates[0] = it.coerceIn(1f, 5f) },
                         onOffsetChange = { x, y ->
                             val maxOffsetX = (imageSize.width * (scaleStates[0] - 1) / 2f)
                             val maxOffsetY = (imageSize.height * (scaleStates[0] - 1) / 2f)
@@ -171,37 +174,8 @@ fun ImageViewerDialog(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             
-            // 左右滑动指示器
+            // 底部页码指示器
             if (imagePaths.size > 1) {
-                // 左箭头
-                if (pagerState.currentPage > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 8.dp)
-                            .size(48.dp)
-                            .clickable { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("‹", color = Color.White.copy(alpha = 0.7f), fontSize = 32.sp)
-                    }
-                }
-                
-                // 右箭头
-                if (pagerState.currentPage < imagePaths.size - 1) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 8.dp)
-                            .size(48.dp)
-                            .clickable { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("›", color = Color.White.copy(alpha = 0.7f), fontSize = 32.sp)
-                    }
-                }
-                
-                // 底部页码指示器
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -227,6 +201,7 @@ fun ImageViewerDialog(
 /**
  * 可缩放的图片组件
  * 支持双指缩放、拖拽、双击重置
+ * 当缩放为1时，允许HorizontalPager处理滑动
  */
 @Composable
 fun ZoomableImage(
@@ -240,42 +215,107 @@ fun ZoomableImage(
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var lastScale by remember { mutableFloatStateOf(1f) }
+    // 用于追踪双指手势
+    var lastTouchDistance by remember { mutableFloatStateOf(0f) }
+    var lastTouchCenter by remember { mutableStateOf(Offset.Zero) }
     var lastOffsetX by remember { mutableFloatStateOf(0f) }
     var lastOffsetY by remember { mutableFloatStateOf(0f) }
+    var currentScale by remember { mutableFloatStateOf(1f) }
+    var isZooming by remember { mutableStateOf(false) }
     
     Box(
         modifier = modifier
             .clipToBounds()
             .onSizeChanged { size -> onImageSizeReady(size) }
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    // 处理缩放
-                    val newScale = lastScale * zoom
-                    onScaleChange(newScale)
-                    
-                    // 只有在缩放状态下才处理平移
-                    if (newScale > 1.01f) {
-                        onOffsetChange(lastOffsetX + pan.x, lastOffsetY + pan.y)
+                // 自定义手势处理
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        
+                        val pointers = event.changes.filter { it.pressed }
+                        
+                        when (pointers.size) {
+                            2 -> {
+                                // 双指手势（缩放/拖拽）
+                                val p1 = pointers[0].position
+                                val p2 = pointers[1].position
+                                
+                                val currentDistance = sqrt(
+                                    (p2.x - p1.x) * (p2.x - p1.x) + 
+                                    (p2.y - p1.y) * (p2.y - p1.y)
+                                )
+                                
+                                val center = Offset((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
+                                
+                                if (lastTouchDistance > 0) {
+                                    // 计算缩放比例
+                                    val scaleFactor = currentDistance / lastTouchDistance
+                                    currentScale = (currentScale * scaleFactor).coerceIn(1f, 5f)
+                                    onScaleChange(currentScale)
+                                    
+                                    if (currentScale > 1.01f) {
+                                        isZooming = true
+                                        // 计算拖拽偏移
+                                        val dx = center.x - lastTouchCenter.x
+                                        val dy = center.y - lastTouchCenter.y
+                                        onOffsetChange(lastOffsetX + dx, lastOffsetY + dy)
+                                        lastOffsetX += dx
+                                        lastOffsetY += dy
+                                    }
+                                }
+                                
+                                lastTouchDistance = currentDistance
+                                lastTouchCenter = center
+                                
+                                // 消费事件，阻止传递给Pager
+                                pointers.forEach { it.consume() }
+                            }
+                            1 -> {
+                                // 单指手势
+                                if (isZooming && currentScale > 1.01f) {
+                                    // 缩放状态下的单指拖拽
+                                    val pos = pointers[0].position
+                                    val dx = pos.x - lastTouchCenter.x
+                                    val dy = pos.y - lastTouchCenter.y
+                                    onOffsetChange(lastOffsetX + dx, lastOffsetY + dy)
+                                    lastOffsetX += dx
+                                    lastOffsetY += dy
+                                    lastTouchCenter = pos
+                                    pointers[0].consume()
+                                } else {
+                                    // 非缩放状态，不消费，让Pager处理
+                                    isZooming = false
+                                    lastTouchDistance = 0f
+                                }
+                            }
+                            0 -> {
+                                // 没有触摸，重置状态
+                                lastTouchDistance = 0f
+                                if (currentScale <= 1.01f) {
+                                    isZooming = false
+                                    lastOffsetX = 0f
+                                    lastOffsetY = 0f
+                                }
+                            }
+                        }
                     }
-                    
-                    lastScale = newScale
-                    lastOffsetX = if (newScale > 1.01f) lastOffsetX + pan.x else 0f
-                    lastOffsetY = if (newScale > 1.01f) lastOffsetY + pan.y else 0f
                 }
             }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
                         // 双击重置或放大到2x
-                        if (scale > 1.5f) {
+                        if (currentScale > 1.5f) {
                             onReset()
-                            lastScale = 1f
+                            currentScale = 1f
                             lastOffsetX = 0f
                             lastOffsetY = 0f
+                            isZooming = false
                         } else {
+                            currentScale = 2f
                             onScaleChange(2f)
-                            lastScale = 2f
+                            isZooming = true
                         }
                     }
                 )
