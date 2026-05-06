@@ -237,10 +237,12 @@ fun ZoomableImage(
                     var oldDistance = 0f
                     var oldCenter = Offset.Zero
                     var wasTwoFingers = false
+                    var hasZoomedOnce = false
                     
                     // 持续监听手势变化
                     do {
-                        val event: PointerEvent = awaitPointerEvent()
+                        // 明确等待 Move 事件
+                        val event = awaitPointerEvent(PointerEventType.Move)
                         val pointers = event.changes.filter { it.pressed }
                         val pointerCount = pointers.size
                         
@@ -256,17 +258,22 @@ fun ZoomableImage(
                                 )
                                 val newCenter = Offset((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
                                 
-                                if (wasTwoFingers && oldDistance > 0) {
+                                if (oldDistance > 0) {
                                     // 计算缩放比例
                                     val zoom = newDistance / oldDistance
-                                    val newScale = (scale * zoom).coerceIn(1f, 5f)
-                                    isZoomed = newScale > 1.01f
-                                    onScaleChange(newScale)
-                                    
-                                    // 缩放时处理拖拽
-                                    if (isZoomed) {
-                                        val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
-                                        onOffsetChange(offsetX + pan.x, offsetY + pan.y)
+                                    if (zoom > 0.9f && zoom < 1.1f) {
+                                        // 变化太小，忽略
+                                    } else {
+                                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                        isZoomed = newScale > 1.01f
+                                        hasZoomedOnce = true
+                                        onScaleChange(newScale)
+                                        
+                                        // 缩放时处理拖拽
+                                        if (isZoomed) {
+                                            val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
+                                            onOffsetChange(offsetX + pan.x, offsetY + pan.y)
+                                        }
                                     }
                                 }
                                 
