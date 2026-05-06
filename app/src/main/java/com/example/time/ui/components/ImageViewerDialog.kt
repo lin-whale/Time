@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -237,12 +236,10 @@ fun ZoomableImage(
                     var oldDistance = 0f
                     var oldCenter = Offset.Zero
                     var wasTwoFingers = false
-                    var hasZoomedOnce = false
                     
                     // 持续监听手势变化
                     do {
-                        // 明确等待 Move 事件
-                        val event = awaitPointerEvent(PointerEventType.Move)
+                        val event = awaitPointerEvent()
                         val pointers = event.changes.filter { it.pressed }
                         val pointerCount = pointers.size
                         
@@ -266,7 +263,6 @@ fun ZoomableImage(
                                     } else {
                                         val newScale = (scale * zoom).coerceIn(1f, 5f)
                                         isZoomed = newScale > 1.01f
-                                        hasZoomedOnce = true
                                         onScaleChange(newScale)
                                         
                                         // 缩放时处理拖拽
