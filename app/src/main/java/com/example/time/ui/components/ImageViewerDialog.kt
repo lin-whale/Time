@@ -182,9 +182,9 @@ fun ZoomableImage(
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val transformableState = rememberTransformableState { zoomChange, panChangeX, panChangeY, _ ->
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
         val newScale = (scale * zoomChange).coerceIn(1f, 5f)
-        onStateChange(newScale, offsetX + panChangeX, offsetY + panChangeY)
+        onStateChange(newScale, offsetX + panChange.x, offsetY + panChange.y)
     }
     
     Box(
