@@ -11,9 +11,8 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -26,12 +25,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerInputChange
-import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 
 import androidx.compose.ui.layout.ContentScale
@@ -44,8 +40,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
-import kotlin.math.abs
-import kotlin.math.sqrt
 
 /**
  * 图片预览对话框
@@ -92,9 +86,13 @@ fun ImageViewerDialog(
                     .padding(top = 60.dp, bottom = 80.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // 缩放状态，用于控制 Pager 是否允许滚动
+                var isZoomedGlobally by remember { mutableStateOf(false) }
+                
                 if (imagePaths.size > 1) {
                     HorizontalPager(
                         state = pagerState,
+                        userScrollEnabled = !isZoomedGlobally, // 缩放时禁用 Pager 滚动
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val path = imagePaths[page]
@@ -115,6 +113,8 @@ fun ImageViewerDialog(
                             offsetY = offsetY,
                             onScaleChange = { newScale ->
                                 scaleStates[page] = newScale.coerceIn(1f, 5f)
+                                // 更新全局缩放状态
+                                isZoomedGlobally = newScale > 1.01f
                             },
                             onOffsetChange = { newOffsetX, newOffsetY ->
                                 // 限制偏移范围，防止图片移出屏幕
@@ -127,6 +127,7 @@ fun ImageViewerDialog(
                                 scaleStates[page] = 1f
                                 offsetXStates[page] = 0f
                                 offsetYStates[page] = 0f
+                                isZoomedGlobally = false
                             },
                             onImageSizeReady = { imageSize = it },
                             modifier = Modifier.fillMaxSize()
@@ -204,8 +205,9 @@ fun ImageViewerDialog(
 /**
  * 可缩放的图片组件
  * 支持双指缩放、拖拽、双击重置
- * 当缩放为1时，允许HorizontalPager处理滑动
+ * 使用内置的 detectTransformGestures 处理手势
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomableImage(
     bitmap: Bitmap?,
@@ -218,8 +220,6 @@ fun ZoomableImage(
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 手势状态
-    var lastScale by remember { mutableFloatStateOf(1f) }
     var lastOffsetX by remember { mutableFloatStateOf(0f) }
     var lastOffsetY by remember { mutableFloatStateOf(0f) }
     var isZoomed by remember { mutableStateOf(false) }
@@ -229,42 +229,33 @@ fun ZoomableImage(
             .clipToBounds()
             .onSizeChanged { size -> onImageSizeReady(size) }
             .pointerInput(Unit) {
-                // 自定义双指手势检测
-                detectTransformGesturesCustom(
-                    onGesture = { pan, zoom, _ ->
-                        val newScale = (lastScale * zoom).coerceIn(1f, 5f)
-                        
-                        // 更新缩放
-                        if (abs(newScale - lastScale) > 0.01f) {
-                            onScaleChange(newScale)
-                            lastScale = newScale
-                            isZoomed = newScale > 1.01f
-                        }
-                        
-                        // 只有在缩放状态下才处理拖拽
-                        if (isZoomed) {
-                            onOffsetChange(lastOffsetX + pan.x, lastOffsetY + pan.y)
-                            lastOffsetX += pan.x
-                            lastOffsetY += pan.y
-                        }
-                    },
-                    // 只有在缩放状态才消费手势，否则让 Pager 处理
-                    shouldConsume = { isZoomed }
-                )
+                // 使用内置的双指缩放手势检测
+                detectTransformGestures { pan, zoom, _ ->
+                    val newScale = (scale * zoom).coerceIn(1f, 5f)
+                    isZoomed = newScale > 1.01f
+                    
+                    onScaleChange(newScale)
+                    
+                    // 缩放时处理拖拽
+                    if (newScale > 1.01f) {
+                        val newOffsetX = lastOffsetX + pan.x
+                        val newOffsetY = lastOffsetY + pan.y
+                        onOffsetChange(newOffsetX, newOffsetY)
+                        lastOffsetX = newOffsetX
+                        lastOffsetY = newOffsetY
+                    }
+                }
             }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        // 双击重置或放大到2x
                         if (isZoomed) {
                             onReset()
-                            lastScale = 1f
                             lastOffsetX = 0f
                             lastOffsetY = 0f
                             isZoomed = false
                         } else {
                             onScaleChange(2f)
-                            lastScale = 2f
                             isZoomed = true
                         }
                     }
@@ -291,70 +282,6 @@ fun ZoomableImage(
         ) {
             Text("📷", color = Color.White)
         }
-    }
-}
-
-/**
- * 自定义双指手势检测
- * 双指手势总是处理（用于缩放），单指手势根据 shouldConsume 决定
- */
-private suspend fun PointerInputScope.detectTransformGesturesCustom(
-    onGesture: (pan: Offset, zoom: Float, rotation: Float) -> Unit,
-    shouldConsume: () -> Boolean
-) {
-    awaitEachGesture {
-        var oldPointerCount = 0
-        var oldCenter = Offset.Zero
-        var oldDistance = 0f
-        
-        awaitFirstDown()
-        
-        do {
-            val event = awaitPointerEvent()
-            val pointers = event.changes.filter { it.pressed }
-            val pointerCount = pointers.size
-            
-            when {
-                pointerCount >= 2 -> {
-                    // 双指手势：总是处理缩放，始终消费事件
-                    val p1 = pointers[0].position
-                    val p2 = pointers[1].position
-                    
-                    val newCenter = Offset((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
-                    val newDistance = sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y))
-                    
-                    if (oldPointerCount >= 2 && oldDistance > 0) {
-                        val zoom = newDistance / oldDistance
-                        val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
-                        
-                        onGesture(pan, zoom, 0f)
-                    }
-                    
-                    // 双指手势始终消费，防止 Pager 干扰
-                    pointers.forEach { it.consume() }
-                    
-                    oldCenter = newCenter
-                    oldDistance = newDistance
-                }
-                pointerCount == 1 -> {
-                    // 单指手势：根据 shouldConsume 决定是否处理
-                    val pos = pointers[0].position
-                    if (oldPointerCount >= 2) {
-                        // 从双指变成单指，更新中心
-                        oldCenter = pos
-                    } else if (oldPointerCount == 1 && shouldConsume()) {
-                        // 单指拖拽（仅在缩放状态）
-                        val pan = Offset(pos.x - oldCenter.x, pos.y - oldCenter.y)
-                        onGesture(pan, 1f, 0f)
-                        pointers[0].consume()
-                        oldCenter = pos
-                    }
-                    // 非缩放状态不消费，让 Pager 处理
-                }
-            }
-            
-            oldPointerCount = pointerCount
-        } while (event.changes.any { it.pressed })
     }
 }
 
