@@ -230,7 +230,7 @@ fun ZoomableImage(
             .onSizeChanged { size -> onImageSizeReady(size) }
             .pointerInput(Unit) {
                 // 使用内置的双指缩放手势检测
-                detectTransformGestures { pan, zoom, _ ->
+                detectTransformGestures { centroid, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(1f, 5f)
                     isZoomed = newScale > 1.01f
                     
