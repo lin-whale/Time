@@ -1,7 +1,7 @@
 /**
  * 图片预览对话框
  * 支持大图查看、缩放、下载、左右滑动切换
- * 使用改进的手势处理，解决滑动和缩放冲突
+ * 使用自定义手势检测，解决滑动和缩放冲突
  */
 package com.example.time.ui.components
 
@@ -11,8 +11,9 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -25,21 +26,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
+import kotlin.math.sqrt
 
 /**
  * 图片预览对话框
@@ -205,9 +208,8 @@ fun ImageViewerDialog(
 /**
  * 可缩放的图片组件
  * 支持双指缩放、拖拽、双击重置
- * 使用内置的 detectTransformGestures 处理手势
+ * 使用自定义手势检测，解决与 Pager 的冲突
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZoomableImage(
     bitmap: Bitmap?,
@@ -220,39 +222,87 @@ fun ZoomableImage(
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var lastOffsetX by remember { mutableFloatStateOf(0f) }
-    var lastOffsetY by remember { mutableFloatStateOf(0f) }
     var isZoomed by remember { mutableStateOf(false) }
     
     Box(
         modifier = modifier
             .clipToBounds()
             .onSizeChanged { size -> onImageSizeReady(size) }
+            // 自定义手势检测：双指时消费事件，单指时不消费
             .pointerInput(Unit) {
-                // 使用内置的双指缩放手势检测
-                detectTransformGestures { centroid, pan, zoom, _ ->
-                    val newScale = (scale * zoom).coerceIn(1f, 5f)
-                    isZoomed = newScale > 1.01f
+                awaitEachGesture {
+                    // 等待第一个手指按下
+                    awaitFirstDown()
                     
-                    onScaleChange(newScale)
+                    var oldDistance = 0f
+                    var oldCenter = Offset.Zero
+                    var wasTwoFingers = false
                     
-                    // 缩放时处理拖拽
-                    if (newScale > 1.01f) {
-                        val newOffsetX = lastOffsetX + pan.x
-                        val newOffsetY = lastOffsetY + pan.y
-                        onOffsetChange(newOffsetX, newOffsetY)
-                        lastOffsetX = newOffsetX
-                        lastOffsetY = newOffsetY
-                    }
+                    // 持续监听手势变化
+                    do {
+                        val event: PointerEvent = awaitPointerEvent()
+                        val pointers = event.changes.filter { it.pressed }
+                        val pointerCount = pointers.size
+                        
+                        when {
+                            pointerCount >= 2 -> {
+                                // 双指手势：计算缩放
+                                val p1 = pointers[0].position
+                                val p2 = pointers[1].position
+                                
+                                val newDistance = sqrt(
+                                    (p2.x - p1.x) * (p2.x - p1.x) + 
+                                    (p2.y - p1.y) * (p2.y - p1.y)
+                                )
+                                val newCenter = Offset((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
+                                
+                                if (wasTwoFingers && oldDistance > 0) {
+                                    // 计算缩放比例
+                                    val zoom = newDistance / oldDistance
+                                    val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                    isZoomed = newScale > 1.01f
+                                    onScaleChange(newScale)
+                                    
+                                    // 缩放时处理拖拽
+                                    if (isZoomed) {
+                                        val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
+                                        onOffsetChange(offsetX + pan.x, offsetY + pan.y)
+                                    }
+                                }
+                                
+                                // 双指手势：消费所有事件，防止 Pager 拦截
+                                pointers.forEach { it.consume() }
+                                
+                                oldDistance = newDistance
+                                oldCenter = newCenter
+                                wasTwoFingers = true
+                            }
+                            pointerCount == 1 -> {
+                                // 单指手势
+                                if (wasTwoFingers) {
+                                    // 从双指变成单指，重置状态
+                                    oldCenter = pointers[0].position
+                                    wasTwoFingers = false
+                                } else if (isZoomed) {
+                                    // 已缩放状态：处理拖拽并消费事件
+                                    val pos = pointers[0].position
+                                    val pan = Offset(pos.x - oldCenter.x, pos.y - oldCenter.y)
+                                    onOffsetChange(offsetX + pan.x, offsetY + pan.y)
+                                    pointers[0].consume()
+                                    oldCenter = pos
+                                }
+                                // 未缩放状态：不消费事件，让 Pager 处理滑动
+                            }
+                        }
+                    } while (event.changes.any { it.pressed })
                 }
             }
+            // 双击手势
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
                         if (isZoomed) {
                             onReset()
-                            lastOffsetX = 0f
-                            lastOffsetY = 0f
                             isZoomed = false
                         } else {
                             onScaleChange(2f)
@@ -383,7 +433,7 @@ private fun loadBitmapFromPath(path: String?): Bitmap? {
             path == null -> null
             path.startsWith("/") -> BitmapFactory.decodeFile(path)
             else -> null
-        }
+      }
     } catch (e: Exception) {
         null
     }
