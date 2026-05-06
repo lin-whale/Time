@@ -1,7 +1,6 @@
 /**
  * 图片预览对话框
  * 支持大图查看、缩放、下载、左右滑动切换
- * 使用自定义手势检测，解决滑动和缩放冲突
  */
 package com.example.time.ui.components
 
@@ -11,9 +10,9 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -26,12 +25,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEvent
-import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -42,14 +38,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
-import kotlin.math.sqrt
 
 /**
  * 图片预览对话框
- * 
- * @param imagePaths 图片路径列表
- * @param initialIndex 初始显示的图片索引
- * @param onDismiss 关闭回调
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,6 +60,9 @@ fun ImageViewerDialog(
     val offsetXStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
     val offsetYStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
     
+    // 全局缩放状态，控制 Pager 是否允许滚动
+    var isZoomedGlobally by remember { mutableStateOf(false) }
+    
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -82,65 +76,42 @@ fun ImageViewerDialog(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.95f))
         ) {
-            // 图片显示区域
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = 60.dp, bottom = 80.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // 缩放状态，用于控制 Pager 是否允许滚动
-                var isZoomedGlobally by remember { mutableStateOf(false) }
-                
                 if (imagePaths.size > 1) {
                     HorizontalPager(
                         state = pagerState,
-                        userScrollEnabled = !isZoomedGlobally, // 缩放时禁用 Pager 滚动
+                        userScrollEnabled = !isZoomedGlobally,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val path = imagePaths[page]
                         val bitmap = remember(path) { loadBitmapFromPath(path) }
-                        
-                        // 当前图片的缩放和偏移
-                        val scale = scaleStates[page]
-                        val offsetX = offsetXStates[page]
-                        val offsetY = offsetYStates[page]
-                        
-                        // 图片加载完成后获取尺寸
                         var imageSize by remember { mutableStateOf(IntSize.Zero) }
                         
                         ZoomableImage(
                             bitmap = bitmap,
-                            scale = scale,
-                            offsetX = offsetX,
-                            offsetY = offsetY,
-                            onScaleChange = { newScale ->
+                            scale = scaleStates[page],
+                            offsetX = offsetXStates[page],
+                            offsetY = offsetYStates[page],
+                            onStateChange = { newScale, newOffsetX, newOffsetY ->
                                 scaleStates[page] = newScale.coerceIn(1f, 5f)
-                                // 更新全局缩放状态
-                                isZoomedGlobally = newScale > 1.01f
-                            },
-                            onOffsetChange = { newOffsetX, newOffsetY ->
-                                // 限制偏移范围，防止图片移出屏幕
                                 val maxOffsetX = (imageSize.width * (scaleStates[page] - 1) / 2f)
                                 val maxOffsetY = (imageSize.height * (scaleStates[page] - 1) / 2f)
                                 offsetXStates[page] = newOffsetX.coerceIn(-maxOffsetX, maxOffsetX)
                                 offsetYStates[page] = newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
-                            },
-                            onReset = {
-                                scaleStates[page] = 1f
-                                offsetXStates[page] = 0f
-                                offsetYStates[page] = 0f
-                                isZoomedGlobally = false
+                                isZoomedGlobally = scaleStates[page] > 1.01f
                             },
                             onImageSizeReady = { imageSize = it },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
                 } else if (imagePaths.size == 1) {
-                    // 单张图片
                     val path = imagePaths.first()
                     val bitmap = remember(path) { loadBitmapFromPath(path) }
-                    
                     var imageSize by remember { mutableStateOf(IntSize.Zero) }
                     
                     ZoomableImage(
@@ -148,17 +119,12 @@ fun ImageViewerDialog(
                         scale = scaleStates[0],
                         offsetX = offsetXStates[0],
                         offsetY = offsetYStates[0],
-                        onScaleChange = { scaleStates[0] = it.coerceIn(1f, 5f) },
-                        onOffsetChange = { x, y ->
+                        onStateChange = { newScale, newOffsetX, newOffsetY ->
+                            scaleStates[0] = newScale.coerceIn(1f, 5f)
                             val maxOffsetX = (imageSize.width * (scaleStates[0] - 1) / 2f)
                             val maxOffsetY = (imageSize.height * (scaleStates[0] - 1) / 2f)
-                            offsetXStates[0] = x.coerceIn(-maxOffsetX, maxOffsetX)
-                            offsetYStates[0] = y.coerceIn(-maxOffsetY, maxOffsetY)
-                        },
-                        onReset = {
-                            scaleStates[0] = 1f
-                            offsetXStates[0] = 0f
-                            offsetYStates[0] = 0f
+                            offsetXStates[0] = newOffsetX.coerceIn(-maxOffsetX, maxOffsetX)
+                            offsetYStates[0] = newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
                         },
                         onImageSizeReady = { imageSize = it },
                         modifier = Modifier.fillMaxSize()
@@ -166,7 +132,6 @@ fun ImageViewerDialog(
                 }
             }
             
-            // 顶部工具栏
             TopAppBar(
                 currentPage = pagerState.currentPage + 1,
                 totalPages = imagePaths.size,
@@ -174,14 +139,12 @@ fun ImageViewerDialog(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
             
-            // 底部工具栏
             val currentPath = imagePaths.getOrElse(pagerState.currentPage) { imagePaths.firstOrNull() } ?: ""
             BottomToolbar(
                 imagePath = currentPath,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             
-            // 底部页码指示器
             if (imagePaths.size > 1) {
                 Row(
                     modifier = Modifier
@@ -207,8 +170,7 @@ fun ImageViewerDialog(
 
 /**
  * 可缩放的图片组件
- * 支持双指缩放、拖拽、双击重置
- * 使用自定义手势检测，解决与 Pager 的冲突
+ * 使用 transformable 处理双指手势
  */
 @Composable
 fun ZoomableImage(
@@ -216,106 +178,27 @@ fun ZoomableImage(
     scale: Float,
     offsetX: Float,
     offsetY: Float,
-    onScaleChange: (Float) -> Unit,
-    onOffsetChange: (Float, Float) -> Unit,
-    onReset: () -> Unit,
+    onStateChange: (Float, Float, Float) -> Unit,
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isZoomed by remember { mutableStateOf(false) }
+    val transformableState = rememberTransformableState { zoomChange, panChangeX, panChangeY, _ ->
+        val newScale = (scale * zoomChange).coerceIn(1f, 5f)
+        onStateChange(newScale, offsetX + panChangeX, offsetY + panChangeY)
+    }
     
     Box(
         modifier = modifier
             .clipToBounds()
             .onSizeChanged { size -> onImageSizeReady(size) }
-            // 自定义手势检测：双指时消费事件，单指时不消费
-            .pointerInput(Unit) {
-                // 存储所有按下指针的ID和位置
-                var pressedPointers = mutableMapOf<PointerId, Offset>()
-                
-                awaitEachGesture {
-                    // 等待第一个手指按下
-                    val down = awaitFirstDown()
-                    pressedPointers[down.id] = down.position
-                    
-                    var oldDistance = 0f
-                    var oldCenter = Offset.Zero
-                    
-                    // 持续监听手势变化
-                    do {
-                        val event = awaitPointerEvent()
-                        
-                        // 更新按下状态
-                        for (change in event.changes) {
-                            if (change.pressed) {
-                                // 指针已按下或移动
-                                pressedPointers[change.id] = change.position
-                                // 重新消费事件，防止 Pager 拦截
-                                if (pressedPointers.size >= 2) {
-                                    change.consume()
-                                }
-                            } else {
-                                // 指针已抬起
-                                pressedPointers.remove(change.id)
-                            }
-                        }
-                        
-                        val pointerCount = pressedPointers.size
-                        
-                        when {
-                            pointerCount >= 2 -> {
-                                // 双指手势：计算缩放
-                                val positions = pressedPointers.values.toList()
-                                val p1 = positions[0]
-                                val p2 = positions[1]
-                                
-                                val newDistance = sqrt(
-                                    (p2.x - p1.x) * (p2.x - p1.x) + 
-                                    (p2.y - p1.y) * (p2.y - p1.y)
-                                )
-                                val newCenter = Offset((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
-                                
-                                if (oldDistance > 0) {
-                                    // 计算缩放比例
-                                    val zoom = newDistance / oldDistance
-                                    val newScale = (scale * zoom).coerceIn(1f, 5f)
-                                    isZoomed = newScale > 1.01f
-                                    onScaleChange(newScale)
-                                    
-                                    // 缩放时处理拖拽
-                                    if (isZoomed) {
-                                        val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
-                                        onOffsetChange(offsetX + pan.x, offsetY + pan.y)
-                                    }
-                                }
-                                
-                                oldDistance = newDistance
-                                oldCenter = newCenter
-                            }
-                            pointerCount == 1 -> {
-                                if (isZoomed) {
-                                    // 已缩放状态：处理拖拽
-                                    val pos = pressedPointers.values.first()
-                                    val pan = Offset(pos.x - oldCenter.x, pos.y - oldCenter.y)
-                                    onOffsetChange(offsetX + pan.x, offsetY + pan.y)
-                                    oldCenter = pos
-                                }
-                                // 未缩放状态：不消费事件，让 Pager 处理滑动
-                            }
-                        }
-                    } while (pressedPointers.isNotEmpty() || event.changes.any { it.pressed })
-                }
-            }
-            // 双击手势
+            .transformable(state = transformableState, enabled = true)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        if (isZoomed) {
-                            onReset()
-                            isZoomed = false
+                        if (scale > 1.01f) {
+                            onStateChange(1f, 0f, 0f)
                         } else {
-                            onScaleChange(2f)
-                            isZoomed = true
+                            onStateChange(2f, 0f, 0f)
                         }
                     }
                 )
@@ -361,14 +244,12 @@ fun TopAppBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 页码
         Text(
             text = "$currentPage / $totalPages",
             color = Color.White,
             style = MaterialTheme.typography.titleMedium
         )
         
-        // 关闭按钮
         IconButton(onClick = onClose) {
             Icon(
                 imageVector = Icons.Default.Close,
@@ -397,7 +278,6 @@ fun BottomToolbar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 下载按钮
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.clickable {
@@ -414,7 +294,6 @@ fun BottomToolbar(
             Text("保存", color = Color.White, style = MaterialTheme.typography.bodySmall)
         }
         
-        // 分享按钮
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.clickable {
@@ -433,24 +312,18 @@ fun BottomToolbar(
     }
 }
 
-/**
- * 从路径加载图片
- */
 private fun loadBitmapFromPath(path: String?): Bitmap? {
     return try {
         when {
             path == null -> null
             path.startsWith("/") -> BitmapFactory.decodeFile(path)
             else -> null
-      }
+        }
     } catch (e: Exception) {
         null
     }
 }
 
-/**
- * 保存图片到相册
- */
 private fun saveImageToGallery(context: android.content.Context, path: String) {
     try {
         val sourceFile = File(path)
@@ -500,9 +373,6 @@ private fun saveImageToGallery(context: android.content.Context, path: String) {
     }
 }
 
-/**
- * 分享图片
- */
 private fun shareImage(context: android.content.Context, path: String) {
     try {
         val file = File(path)
