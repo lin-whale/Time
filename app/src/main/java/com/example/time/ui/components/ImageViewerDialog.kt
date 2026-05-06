@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -229,25 +230,44 @@ fun ZoomableImage(
             .onSizeChanged { size -> onImageSizeReady(size) }
             // 自定义手势检测：双指时消费事件，单指时不消费
             .pointerInput(Unit) {
+                // 存储所有按下指针的ID和位置
+                var pressedPointers = mutableMapOf<PointerId, Offset>()
+                
                 awaitEachGesture {
                     // 等待第一个手指按下
-                    awaitFirstDown()
+                    val down = awaitFirstDown()
+                    pressedPointers[down.id] = down.position
                     
                     var oldDistance = 0f
                     var oldCenter = Offset.Zero
-                    var wasTwoFingers = false
                     
                     // 持续监听手势变化
                     do {
                         val event = awaitPointerEvent()
-                        val pointers = event.changes.filter { it.pressed }
-                        val pointerCount = pointers.size
+                        
+                        // 更新按下状态
+                        for (change in event.changes) {
+                            if (change.pressed) {
+                                // 指针已按下或移动
+                                pressedPointers[change.id] = change.position
+                                // 重新消费事件，防止 Pager 拦截
+                                if (pressedPointers.size >= 2) {
+                                    change.consume()
+                                }
+                            } else {
+                                // 指针已抬起
+                                pressedPointers.remove(change.id)
+                            }
+                        }
+                        
+                        val pointerCount = pressedPointers.size
                         
                         when {
                             pointerCount >= 2 -> {
                                 // 双指手势：计算缩放
-                                val p1 = pointers[0].position
-                                val p2 = pointers[1].position
+                                val positions = pressedPointers.values.toList()
+                                val p1 = positions[0]
+                                val p2 = positions[1]
                                 
                                 val newDistance = sqrt(
                                     (p2.x - p1.x) * (p2.x - p1.x) + 
@@ -258,46 +278,32 @@ fun ZoomableImage(
                                 if (oldDistance > 0) {
                                     // 计算缩放比例
                                     val zoom = newDistance / oldDistance
-                                    if (zoom > 0.9f && zoom < 1.1f) {
-                                        // 变化太小，忽略
-                                    } else {
-                                        val newScale = (scale * zoom).coerceIn(1f, 5f)
-                                        isZoomed = newScale > 1.01f
-                                        onScaleChange(newScale)
-                                        
-                                        // 缩放时处理拖拽
-                                        if (isZoomed) {
-                                            val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
-                                            onOffsetChange(offsetX + pan.x, offsetY + pan.y)
-                                        }
+                                    val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                    isZoomed = newScale > 1.01f
+                                    onScaleChange(newScale)
+                                    
+                                    // 缩放时处理拖拽
+                                    if (isZoomed) {
+                                        val pan = Offset(newCenter.x - oldCenter.x, newCenter.y - oldCenter.y)
+                                        onOffsetChange(offsetX + pan.x, offsetY + pan.y)
                                     }
                                 }
                                 
-                                // 双指手势：消费所有事件，防止 Pager 拦截
-                                pointers.forEach { it.consume() }
-                                
                                 oldDistance = newDistance
                                 oldCenter = newCenter
-                                wasTwoFingers = true
                             }
                             pointerCount == 1 -> {
-                                // 单指手势
-                                if (wasTwoFingers) {
-                                    // 从双指变成单指，重置状态
-                                    oldCenter = pointers[0].position
-                                    wasTwoFingers = false
-                                } else if (isZoomed) {
-                                    // 已缩放状态：处理拖拽并消费事件
-                                    val pos = pointers[0].position
+                                if (isZoomed) {
+                                    // 已缩放状态：处理拖拽
+                                    val pos = pressedPointers.values.first()
                                     val pan = Offset(pos.x - oldCenter.x, pos.y - oldCenter.y)
                                     onOffsetChange(offsetX + pan.x, offsetY + pan.y)
-                                    pointers[0].consume()
                                     oldCenter = pos
                                 }
                                 // 未缩放状态：不消费事件，让 Pager 处理滑动
                             }
                         }
-                    } while (event.changes.any { it.pressed })
+                    } while (pressedPointers.isNotEmpty() || event.changes.any { it.pressed })
                 }
             }
             // 双击手势
