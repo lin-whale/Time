@@ -1,11 +1,6 @@
 /**
  * 图片预览对话框
  * 支持大图查看、缩放、下载、左右滑动切换
- *
- * 手势策略：
- * - 双指缩放/拖拽：detectTransformGestures 处理，缩放时禁用 Pager
- * - 双击缩放：detectTapGestures 处理
- * - 单指滑动：HorizontalPager 自己处理（未缩放时）
  */
 package com.example.time.ui.components
 
@@ -15,8 +10,9 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -33,6 +29,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -43,6 +41,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import java.io.File
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -56,11 +55,11 @@ fun ImageViewerDialog(
         initialPage = initialIndex.coerceIn(0, (imagePaths.size - 1).coerceAtLeast(0)),
         pageCount = { imagePaths.size }
     )
-    
     val scaleStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(1f) } } }
     val offsetXStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
     val offsetYStates = remember { mutableStateListOf<Float>().apply { repeat(imagePaths.size) { add(0f) } } }
-    
+    var isPinching by remember { mutableStateOf(false) }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = true)
@@ -73,27 +72,26 @@ fun ImageViewerDialog(
                 if (imagePaths.size > 1) {
                     HorizontalPager(
                         state = pagerState,
-                        // 缩放时禁用 Pager 滑动
-                        userScrollEnabled = scaleStates[pagerState.currentPage] <= 1.01f,
+                        userScrollEnabled = !isPinching && scaleStates[pagerState.currentPage] <= 1.01f,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val path = imagePaths[page]
                         val bitmap = remember(path) { loadBitmapFromPath(path) }
                         var imageSize by remember { mutableStateOf(IntSize.Zero) }
-                        
                         ZoomableImage(
                             bitmap = bitmap,
                             scale = scaleStates[page],
                             offsetX = offsetXStates[page],
                             offsetY = offsetYStates[page],
                             onScaleChange = { newScale, newOffsetX, newOffsetY ->
-                                val finalScale = if (newScale < 1.05f) 1f else newScale.coerceIn(1f, 5f)
-                                scaleStates[page] = finalScale
-                                val maxOffsetX = (imageSize.width * (finalScale - 1) / 2f)
-                                val maxOffsetY = (imageSize.height * (finalScale - 1) / 2f)
-                                offsetXStates[page] = if (finalScale <= 1f) 0f else newOffsetX.coerceIn(-maxOffsetX, maxOffsetX)
-                                offsetYStates[page] = if (finalScale <= 1f) 0f else newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
+                                val fs = if (newScale < 1.05f) 1f else newScale.coerceIn(1f, 5f)
+                                scaleStates[page] = fs
+                                val mx = (imageSize.width * (fs - 1) / 2f)
+                                val my = (imageSize.height * (fs - 1) / 2f)
+                                offsetXStates[page] = if (fs <= 1f) 0f else newOffsetX.coerceIn(-mx, mx)
+                                offsetYStates[page] = if (fs <= 1f) 0f else newOffsetY.coerceIn(-my, my)
                             },
+                            onPinchStateChange = { isPinching = it },
                             onImageSizeReady = { imageSize = it },
                             modifier = Modifier.fillMaxSize()
                         )
@@ -102,36 +100,33 @@ fun ImageViewerDialog(
                     val path = imagePaths.first()
                     val bitmap = remember(path) { loadBitmapFromPath(path) }
                     var imageSize by remember { mutableStateOf(IntSize.Zero) }
-                    
                     ZoomableImage(
                         bitmap = bitmap,
                         scale = scaleStates[0],
                         offsetX = offsetXStates[0],
                         offsetY = offsetYStates[0],
                         onScaleChange = { newScale, newOffsetX, newOffsetY ->
-                            val finalScale = if (newScale < 1.05f) 1f else newScale.coerceIn(1f, 5f)
-                            scaleStates[0] = finalScale
-                            val maxOffsetX = (imageSize.width * (finalScale - 1) / 2f)
-                            val maxOffsetY = (imageSize.height * (finalScale - 1) / 2f)
-                            offsetXStates[0] = if (finalScale <= 1f) 0f else newOffsetX.coerceIn(-maxOffsetX, maxOffsetX)
-                            offsetYStates[0] = if (finalScale <= 1f) 0f else newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
+                            val fs = if (newScale < 1.05f) 1f else newScale.coerceIn(1f, 5f)
+                            scaleStates[0] = fs
+                            val mx = (imageSize.width * (fs - 1) / 2f)
+                            val my = (imageSize.height * (fs - 1) / 2f)
+                            offsetXStates[0] = if (fs <= 1f) 0f else newOffsetX.coerceIn(-mx, mx)
+                            offsetYStates[0] = if (fs <= 1f) 0f else newOffsetY.coerceIn(-my, my)
                         },
+                        onPinchStateChange = { },
                         onImageSizeReady = { imageSize = it },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
             }
-            
             TopAppBar(
                 currentPage = pagerState.currentPage + 1,
                 totalPages = imagePaths.size,
                 onClose = onDismiss,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
-            
             val currentPath = imagePaths.getOrElse(pagerState.currentPage) { imagePaths.firstOrNull() } ?: ""
             BottomToolbar(imagePath = currentPath, modifier = Modifier.align(Alignment.BottomCenter))
-            
             if (imagePaths.size > 1) {
                 Row(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 72.dp),
@@ -153,13 +148,6 @@ fun ImageViewerDialog(
     }
 }
 
-/**
- * 可缩放的图片组件
- *
- * 使用 detectTransformGestures 处理双指缩放/拖拽
- * 使用 detectTapGestures 处理双击缩放
- * 单指滑动由外层 HorizontalPager 处理（scale=1 时 userScrollEnabled=true）
- */
 @Composable
 fun ZoomableImage(
     bitmap: Bitmap?,
@@ -167,29 +155,69 @@ fun ZoomableImage(
     offsetX: Float,
     offsetY: Float,
     onScaleChange: (Float, Float, Float) -> Unit,
+    onPinchStateChange: (Boolean) -> Unit,
     onImageSizeReady: (IntSize) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .clipToBounds()
-            .onSizeChanged { size -> onImageSizeReady(size) }
-            // 双指缩放/拖拽
+            .onSizeChanged { onImageSizeReady(it) }
             .pointerInput(Unit) {
-                detectTransformGestures { centroid, pan, zoom, _ ->
-                    val newScale = (scale * zoom).coerceIn(1f, 5f)
-                    // 缩放时以双指中心点为基准调整偏移
-                    val newOffsetX = offsetX + pan.x - (centroid.x - offsetX) * (zoom - 1f)
-                    val newOffsetY = offsetY + pan.y - (centroid.y - offsetY) * (zoom - 1f)
-                    onScaleChange(newScale, newOffsetX, newOffsetY)
+                awaitEachGesture {
+                    val firstDown = awaitFirstDown(requireUnconsumed = false)
+                    val pressed = mutableMapOf<PointerId, Offset>()
+                    pressed[firstDown.id] = firstDown.position
+                    var lastDist = 0f
+                    var lastCenter = Offset.Zero
+                    var lastSingle = firstDown.position
+
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        for (c in event.changes) {
+                            if (c.pressed) pressed[c.id] = c.position else pressed.remove(c.id)
+                        }
+                        if (pressed.isEmpty()) { onPinchStateChange(false); break }
+                        when {
+                            pressed.size >= 2 -> {
+                                onPinchStateChange(true)
+                                val pts = pressed.values.toList()
+                                val p1 = pts[0]; val p2 = pts[1]
+                                val d = sqrt((p2.x-p1.x)*(p2.x-p1.x)+(p2.y-p1.y)*(p2.y-p1.y))
+                                val ctr = Offset((p1.x+p2.x)/2f,(p1.y+p2.y)/2f)
+                                if (lastDist > 1f) {
+                                    val z = d / lastDist
+                                    if (z.isFinite() && z in 0.3f..3f) {
+                                        val ns = (scale * z).coerceIn(1f, 5f)
+                                        onScaleChange(ns, offsetX + ctr.x - lastCenter.x, offsetY + ctr.y - lastCenter.y)
+                                    }
+                                }
+                                lastDist = d; lastCenter = ctr
+                                for (c in event.changes) { if (c.pressed) c.consume() }
+                            }
+                            pressed.size == 1 && scale > 1.01f -> {
+                                val pos = pressed.values.first()
+                                val dx = pos.x - lastSingle.x; val dy = pos.y - lastSingle.y
+                                if (dx*dx+dy*dy > 1f) {
+                                    onScaleChange(scale, offsetX + dx, offsetY + dy)
+                                    lastSingle = pos
+                                }
+                                for (c in event.changes) { if (c.pressed) c.consume() }
+                            }
+                            else -> {
+                                lastSingle = pressed.values.first()
+                                onPinchStateChange(false)
+                            }
+                        }
+                    }
                 }
             }
-            // 双击缩放
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
                         if (scale > 1.01f) {
                             onScaleChange(1f, 0f, 0f)
+                            onPinchStateChange(false)
                         } else {
                             onScaleChange(2f, 0f, 0f)
                         }
@@ -203,10 +231,8 @@ fun ZoomableImage(
                 bitmap = it.asImageBitmap(),
                 contentDescription = "预览图片",
                 modifier = Modifier.graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offsetX
-                    translationY = offsetY
+                    scaleX = scale; scaleY = scale
+                    translationX = offsetX; translationY = offsetY
                 },
                 contentScale = ContentScale.Fit
             )
@@ -253,11 +279,7 @@ fun BottomToolbar(imagePath: String, modifier: Modifier = Modifier) {
 
 private fun loadBitmapFromPath(path: String?): Bitmap? {
     return try {
-        when {
-            path == null -> null
-            path.startsWith("/") -> BitmapFactory.decodeFile(path)
-            else -> null
-        }
+        when { path == null -> null; path.startsWith("/") -> BitmapFactory.decodeFile(path); else -> null }
     } catch (e: Exception) { null }
 }
 
@@ -265,20 +287,20 @@ private fun saveImageToGallery(context: android.content.Context, path: String) {
     try {
         val sourceFile = File(path)
         if (!sourceFile.exists()) { Toast.makeText(context, "图片不存在", Toast.LENGTH_SHORT).show(); return }
-        val contentResolver = context.contentResolver
-        val fileName = "Timefly_${System.currentTimeMillis()}_${sourceFile.name}"
-        val contentValues = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+        val cr = context.contentResolver
+        val fn = "Timefly_${System.currentTimeMillis()}_${sourceFile.name}"
+        val cv = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fn)
             put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_PICTURES}/Timefly")
             put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
         }
-        val imageUri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-        if (imageUri == null) { Toast.makeText(context, "创建相册条目失败", Toast.LENGTH_SHORT).show(); return }
-        contentResolver.openOutputStream(imageUri)?.use { outputStream -> sourceFile.inputStream().use { inputStream -> inputStream.copyTo(outputStream) } }
-            ?: run { Toast.makeText(context, "写入图片失败", Toast.LENGTH_SHORT).show(); contentResolver.delete(imageUri, null, null); return }
-        contentValues.clear(); contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
-        contentResolver.update(imageUri, contentValues, null, null)
+        val uri = cr.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv)
+        if (uri == null) { Toast.makeText(context, "创建相册条目失败", Toast.LENGTH_SHORT).show(); return }
+        cr.openOutputStream(uri)?.use { os -> sourceFile.inputStream().use { it.copyTo(os) } }
+            ?: run { Toast.makeText(context, "写入图片失败", Toast.LENGTH_SHORT).show(); cr.delete(uri, null, null); return }
+        cv.clear(); cv.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+        cr.update(uri, cv, null, null)
         Toast.makeText(context, "已保存到相册 Pictures/Timefly", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) { Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show(); e.printStackTrace() }
 }
